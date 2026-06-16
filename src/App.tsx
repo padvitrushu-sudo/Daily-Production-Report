@@ -70,7 +70,7 @@ export default function App() {
   const [activeDraftId, setActiveDraftId] = useState<string>('');
 
   // Auto Sync Indicators
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'synced' | 'failed'>('idle');
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'synced' | 'failed' | 'saving-all' | 'synced-all'>('idle');
   const [loadingDb, setLoadingDb] = useState(false);
 
   // Active view 
@@ -251,13 +251,54 @@ export default function App() {
     }
   };
 
-  const handleStepSaveAndNext = (nextIndex: number) => {
+  const handleStepSaveAndNext = async (nextIndex: number) => {
     // Scroll container to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    handleUpdateReport({
+    
+    const updated = {
       ...report,
       activeStep: nextIndex
-    });
+    };
+    
+    // Locally update state right away
+    handleUpdateReport(updated);
+
+    // Save to Supabase and sync to Google Sheets in real-time
+    setSyncStatus('saving-all');
+    try {
+      // 1. Save to Supabase
+      await saveReportToSupabase(updated);
+      
+      // 2. Synchronize to Google Sheets
+      const config = configs.find(c => c.id === currentBranch);
+      if (config?.webAppUrl) {
+        try {
+          const response = await fetch(config.webAppUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/text',
+            },
+            body: JSON.stringify(updated),
+          });
+          const resData = await response.json();
+          if (resData.status !== 'success') {
+            console.warn('Google Sheet step update reported caution:', resData.message);
+          }
+        } catch (sheetErr) {
+          console.error('Google Sheet background push delayed:', sheetErr);
+        }
+      }
+      
+      setSyncStatus('synced-all');
+      setTimeout(() => {
+        setSyncStatus('idle');
+      }, 3000);
+      
+    } catch (err) {
+      console.error("Step double-destination sync failed:", err);
+      setSyncStatus('failed');
+    }
   };
 
   const handleFinalSubmit = async (finalReport: ProductionReport) => {
@@ -403,6 +444,16 @@ export default function App() {
                 <>
                   <RefreshCw className="w-3.5 h-3.5 text-amber-500 animate-spin" />
                   <span className="font-semibold text-gray-600">Auto-saving cloud draft...</span>
+                </>
+              ) : syncStatus === 'saving-all' ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                  <span className="font-semibold text-blue-800">Saving to Supabase & Sheet...</span>
+                </>
+              ) : syncStatus === 'synced-all' ? (
+                <>
+                  <CheckCircle className="w-3.5 h-3.5 text-indigo-600 fill-indigo-50 animate-bounce" />
+                  <span className="font-semibold text-indigo-900">Synced to Supabase & Sheet!</span>
                 </>
               ) : syncStatus === 'synced' ? (
                 <>

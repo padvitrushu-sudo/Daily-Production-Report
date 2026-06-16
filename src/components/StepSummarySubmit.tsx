@@ -301,7 +301,7 @@ export const StepSummarySubmit: React.FC<StepSummarySubmitProps> = ({
               type="button"
               disabled={submitting}
               id="btn-final-dispatch"
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm tracking-tight flex items-center space-x-2 shadow-lg shadow-emerald-500/15 active:scale-95 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed"
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm tracking-tight flex items-center space-x-2 shadow-lg shadow-emerald-500/15 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>

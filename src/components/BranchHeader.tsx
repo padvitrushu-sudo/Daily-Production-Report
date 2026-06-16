@@ -126,7 +126,7 @@ export const BranchHeader: React.FC<BranchHeaderProps> = ({
                 onClick={onLogout}
                 type="button"
                 id="btn-logout"
-                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/40 rounded-lg font-bold text-[10px] flex items-center gap-1 shadow-xs transition-all active:scale-95"
+                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/40 rounded-lg font-bold text-[10px] flex items-center gap-1 shadow-xs transition-colors"
                 title={`Sign out from ${user.label}`}
               >
                 <LogOut className="w-3.5 h-3.5 stroke-[2.5]" />

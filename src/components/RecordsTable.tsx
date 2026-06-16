@@ -203,9 +203,9 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
           <button
             onClick={handleExportCSV}
             disabled={filteredRecords.length === 0}
-            className={`w-full sm:w-auto px-4 py-2 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-xs border ${
+            className={`w-full sm:w-auto px-4 py-2 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-colors shadow-xs border ${
               filteredRecords.length > 0
-                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100 active:scale-95'
+                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
                 : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
             }`}
           >
