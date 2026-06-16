@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, PackageCheck } from 'lucide-react';
 
 interface StepCtnPackingProps {
   data: CtnPackingDetails;
+  ironingCumulative?: number | '';
   onUpdate: (updated: CtnPackingDetails) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -16,10 +17,34 @@ interface StepCtnPackingProps {
 
 export const StepCtnPacking: React.FC<StepCtnPackingProps> = ({
   data,
+  ironingCumulative = '',
   onUpdate,
   onPrev,
   onNext,
 }) => {
+  const targetIroningCum = ironingCumulative !== '' && !isNaN(Number(ironingCumulative)) ? Number(ironingCumulative) : 0;
+
+  // Reactively calculate values based on User rules
+  React.useEffect(() => {
+    // 1) Today BQ (Manual) and Cumulative BR same value as BQ (Today)
+    const expectedCum = data.today !== '' ? Number(data.today) : '';
+    
+    // 2) Balance BS = Ironing Cumulative BL - CTN Cumulative BR
+    const actualBR = expectedCum !== '' ? Number(expectedCum) : 0;
+    const expectedBal = data.today !== '' || ironingCumulative !== '' ? targetIroningCum - actualBR : '';
+
+    if (
+      data.cumulative !== expectedCum ||
+      data.balanceToPack !== expectedBal
+    ) {
+      onUpdate({
+        ...data,
+        cumulative: expectedCum,
+        balanceToPack: expectedBal,
+      });
+    }
+  }, [data.today, targetIroningCum]);
+
   const handleChange = (field: keyof CtnPackingDetails, value: any) => {
     onUpdate({
       ...data,
@@ -27,7 +52,7 @@ export const StepCtnPacking: React.FC<StepCtnPackingProps> = ({
     });
   };
 
-  const isFormValid = true; // No field mandatory in form
+  const isFormValid = true;
 
   return (
     <div id="step-ctn-packing" className="bg-white p-6 rounded-2xl border border-gray-100 shadow-xs space-y-6">
@@ -46,9 +71,9 @@ export const StepCtnPacking: React.FC<StepCtnPackingProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         
-        {/* Today */}
+        {/* Today BQ */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-700 font-medium">Cartons Packed Today *</label>
+          <label className="text-xs font-bold text-gray-700 font-medium">Cartons Packed Today (BQ) *</label>
           <input
             type="number"
             required
@@ -59,34 +84,39 @@ export const StepCtnPacking: React.FC<StepCtnPackingProps> = ({
           />
         </div>
 
-        {/* Cumulative */}
+        {/* Cumulative BR */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-700 font-medium">Cumulative Cartons Packed *</label>
+          <div className="flex justify-between items-center">
+            <label className="text-xs font-bold text-gray-700 font-medium font-semibold">Cumulative Cartons Packed (BR)</label>
+            <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded font-bold font-mono uppercase">Same as BQ</span>
+          </div>
           <input
             type="number"
-            required
+            readOnly
             placeholder="Accumulated carton units"
             value={data.cumulative}
-            onChange={(e) => handleChange('cumulative', e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-semibold"
+            className="w-full px-3.5 py-2.5 bg-slate-50 text-gray-750 border border-gray-200 rounded-xl text-sm font-bold font-mono cursor-not-allowed outline-none"
           />
         </div>
 
-        {/* Balance to Pack */}
+        {/* Balance to Pack BS */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-700 font-medium font-medium">Balance Cartons to Pack</label>
+          <div className="flex justify-between items-center">
+            <label className="text-xs font-bold text-gray-700 font-medium font-semibold">Balance to Pack (BS)</label>
+            <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded font-bold font-mono uppercase font-semibold">Ironing BL - BR</span>
+          </div>
           <input
             type="number"
+            readOnly
             placeholder="Remaining boxes load"
             value={data.balanceToPack}
-            onChange={(e) => handleChange('balanceToPack', e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-semibold"
+            className="w-full px-3.5 py-2.5 bg-slate-50 text-gray-750 border border-gray-200 rounded-xl text-sm font-bold font-mono cursor-not-allowed outline-none"
           />
         </div>
 
-        {/* Possible FI Date */}
+        {/* Possible FI Date BT */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-700 font-medium">Possible FI Date (Inspection) *</label>
+          <label className="text-xs font-bold text-gray-700 font-medium">Possible FI Date (BT) *</label>
           <input
             type="date"
             required
@@ -96,9 +126,9 @@ export const StepCtnPacking: React.FC<StepCtnPackingProps> = ({
           />
         </div>
 
-        {/* Remarks */}
+        {/* Remarks BU */}
         <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <label className="text-xs font-bold text-gray-700 font-medium">Packaging Remarks / Notes</label>
+          <label className="text-xs font-bold text-gray-700 font-medium">Packaging Remarks / Status (BU)</label>
           <input
             type="text"
             placeholder="e.g. Master weight verification ok, carton dimensions 60x40x40"

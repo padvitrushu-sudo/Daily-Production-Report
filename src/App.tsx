@@ -706,6 +706,7 @@ export default function App() {
               {activeStep === 4 && (
                 <StepSewing
                   data={report.sewing}
+                  cuttingCumulative={(report.cutting.qtyToday !== '' ? Number(report.cutting.qtyToday) : 0) + (report.cutting.qtyUptoYesterday !== '' ? Number(report.cutting.qtyUptoYesterday) : 0)}
                   onUpdate={(sewing) => handleUpdateReport({ ...report, sewing })}
                   onPrev={() => handleStepSaveAndNext(3)}
                   onNext={() => handleStepSaveAndNext(5)}
@@ -724,6 +725,7 @@ export default function App() {
               {activeStep === 6 && (
                 <StepFinishing
                   data={report.finishing}
+                  sewingOutputCumulative={report.sewing.output.cumulative}
                   onUpdate={(finishing) => handleUpdateReport({ ...report, finishing })}
                   onPrev={() => handleStepSaveAndNext(5)}
                   onNext={() => handleStepSaveAndNext(7)}
@@ -733,6 +735,7 @@ export default function App() {
               {activeStep === 7 && (
                 <StepIroningPacking
                   data={report.ironingPacking}
+                  aqlAuditCumulative={report.finishing.aqlAudit.cumulative}
                   onUpdate={(ironingPacking) => handleUpdateReport({ ...report, ironingPacking })}
                   onPrev={() => handleStepSaveAndNext(6)}
                   onNext={() => handleStepSaveAndNext(8)}
@@ -742,6 +745,7 @@ export default function App() {
               {activeStep === 8 && (
                 <StepCtnPacking
                   data={report.ctnPacking}
+                  ironingCumulative={report.ironingPacking.cumulative}
                   onUpdate={(ctnPacking) => handleUpdateReport({ ...report, ctnPacking })}
                   onPrev={() => handleStepSaveAndNext(7)}
                   onNext={() => handleStepSaveAndNext(9)}

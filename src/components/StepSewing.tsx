@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, LayoutGrid, CheckSquare } from 'lucide-react
 
 interface StepSewingProps {
   data: SewingDetails;
+  cuttingCumulative?: number | '';
   onUpdate: (updated: SewingDetails) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -16,11 +17,53 @@ interface StepSewingProps {
 
 export const StepSewing: React.FC<StepSewingProps> = ({
   data,
+  cuttingCumulative = '',
   onUpdate,
   onPrev,
   onNext,
 }) => {
   const [activeTab, setActiveTab] = useState<'input' | 'output'>('input');
+
+  const targetCuttingCum = cuttingCumulative !== '' && !isNaN(Number(cuttingCumulative)) ? Number(cuttingCumulative) : 0;
+
+  // Reactively calculate values based on User rules
+  React.useEffect(() => {
+    const todayIn = data.input.today === '' ? 0 : Number(data.input.today);
+    // Cumulative (AM) - Same as Today (AL)
+    const expectedCumIn = data.input.today !== '' ? Number(data.input.today) : '';
+    // Balance to load: Cutting Steps AJ - Today (AL)
+    const expectedBalIn = data.input.today !== '' ? targetCuttingCum - todayIn : '';
+
+    const todayOut = data.output.today === '' ? 0 : Number(data.output.today);
+    // Cumulative (AQ) - Same as Today (AP)
+    const expectedCumOut = data.output.today !== '' ? Number(data.output.today) : '';
+    
+    // Balance to Sew: AM - AQ
+    const actualAM = expectedCumIn !== '' ? Number(expectedCumIn) : 0;
+    const actualAQ = expectedCumOut !== '' ? Number(expectedCumOut) : 0;
+    const expectedBalOut = data.input.today !== '' || data.output.today !== '' ? actualAM - actualAQ : '';
+
+    if (
+      data.input.cumulative !== expectedCumIn ||
+      data.input.balanceToLoad !== expectedBalIn ||
+      data.output.cumulative !== expectedCumOut ||
+      data.output.balanceToSew !== expectedBalOut
+    ) {
+      onUpdate({
+        ...data,
+        input: {
+          ...data.input,
+          cumulative: expectedCumIn,
+          balanceToLoad: expectedBalIn,
+        },
+        output: {
+          ...data.output,
+          cumulative: expectedCumOut,
+          balanceToSew: expectedBalOut,
+        }
+      });
+    }
+  }, [data.input.today, data.output.today, targetCuttingCum]);
 
   const handleInputChange = (field: keyof SewingDetails['input'], value: any) => {
     onUpdate({
@@ -102,25 +145,30 @@ export const StepSewing: React.FC<StepSewingProps> = ({
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-600">Cumulative Load (pcs) *</label>
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-gray-600">Cumulative Load (pcs) *</label>
+                <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold font-mono">Same as Today</span>
+              </div>
               <input
                 type="number"
-                required
+                readOnly
                 placeholder="Total loaded upto today"
                 value={data.input.cumulative}
-                onChange={(e) => handleInputChange('cumulative', e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-slate-100/80 text-gray-700 font-bold border border-gray-200 rounded-lg text-sm font-mono cursor-not-allowed outline-none"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-600">Balance to Load (pcs)</label>
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-gray-600">Balance to Load (pcs)</label>
+                <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold font-mono">Cutting AJ - Today AL</span>
+              </div>
               <input
                 type="number"
+                readOnly
                 placeholder="Calculated remaining balance"
                 value={data.input.balanceToLoad}
-                onChange={(e) => handleInputChange('balanceToLoad', e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:border-text-emerald-500"
+                className="w-full px-3 py-2 bg-slate-100/80 text-gray-750 font-bold border border-gray-200 rounded-lg text-sm font-mono cursor-not-allowed outline-none"
               />
             </div>
 
@@ -158,25 +206,30 @@ export const StepSewing: React.FC<StepSewingProps> = ({
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-600">Cumulative Output (pcs) *</label>
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-gray-600">Cumulative Output (pcs) *</label>
+                <span className="text-[9px] text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded font-semibold font-mono">Same as Today</span>
+              </div>
               <input
                 type="number"
-                required
+                readOnly
                 placeholder="Total completed output"
                 value={data.output.cumulative}
-                onChange={(e) => handleOutputChange('cumulative', e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:border-sky-500"
+                className="w-full px-3 py-2 bg-slate-100/80 text-gray-750 font-bold border border-gray-200 rounded-lg text-sm font-mono cursor-not-allowed outline-none"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-600">Balance to Sew (pcs)</label>
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-gray-600">Balance to Sew (pcs)</label>
+                <span className="text-[9px] text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded font-semibold font-mono">Input AM - Output AQ</span>
+              </div>
               <input
                 type="number"
+                readOnly
                 placeholder="Target pieces remaining"
                 value={data.output.balanceToSew}
-                onChange={(e) => handleOutputChange('balanceToSew', e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:border-sky-500"
+                className="w-full px-3 py-2 bg-slate-100/80 text-gray-750 font-bold border border-gray-200 rounded-lg text-sm font-mono cursor-not-allowed outline-none"
               />
             </div>
 
