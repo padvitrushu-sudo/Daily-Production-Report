@@ -95,7 +95,7 @@ export const StepAccessories: React.FC<StepAccessoriesProps> = ({
       </div>
 
       {/* Quick Add Form */}
-      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100/60 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
+      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100/60 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-gray-600">Accessory Item Name</label>
           <input
@@ -126,6 +126,17 @@ export const StepAccessories: React.FC<StepAccessoriesProps> = ({
             value={newReceived}
             onChange={(e) => setNewReceived(e.target.value === '' ? '' : Number(e.target.value))}
             className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-bold text-gray-600">Bal to Received (AB)</label>
+          <input
+            type="text"
+            readOnly
+            placeholder="Calculated empty"
+            value={newRequired === '' ? ' ' : (Number(newRequired) - Number(newReceived || 0))}
+            className="px-3 py-2 bg-slate-100 text-slate-700 font-bold border border-gray-200 rounded-lg text-sm font-mono cursor-not-allowed outline-none"
           />
         </div>
 
@@ -164,7 +175,7 @@ export const StepAccessories: React.FC<StepAccessoriesProps> = ({
                 <th className="p-3">Item Name</th>
                 <th className="p-3">Required Qty</th>
                 <th className="p-3">Received Qty</th>
-                <th className="p-3">Balance to Receive</th>
+                <th className="p-3">Bal to Received (AB)</th>
                 <th className="p-3">Remarks</th>
                 <th className="p-3 text-center">Action</th>
               </tr>

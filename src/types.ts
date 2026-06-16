@@ -45,7 +45,7 @@ export interface AccessoryItem {
   item: string;
   requiredQty: number | '';
   receivedQty: number | '';
-  balanceToReceive: number | ''; // requiredQty - receivedQty
+  balanceToReceive: number | ' ' | ''; // requiredQty - receivedQty
   remarks: string;
 }
 

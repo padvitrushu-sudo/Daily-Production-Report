@@ -44,6 +44,8 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
       "Garment Description", "Fabric Description", "GSM", "Color", 
       "Order Quantity", "Planned Mfg Qty", "Ex Factory Date", "Plan Consumption Type",
       "Fabric Recv Date", "Fabric Required Qty", "Fabric Received Qty", "Fabric Balance Qty",
+      "Trim Item Name", "Trim Required Qty", "Trim Received Qty", "Trim Balance Qty", "Trim Remarks",
+      "Accessory Item Name", "Accessory Required Qty (Z)", "Accessory Received Qty (AA)", "Accessory Bal to Received (AB)", "Accessory Remark (AC)",
       "Cutting Plan Start", "Cutting Actual Start", "Cutting Plan Qty", "Cutting Today", "Cutting Cumulative", "Cutting Balance",
       "Sewing Input Today", "Sewing Input Cumulative", "Sewing Output Today", "Sewing Output Cumulative",
       "Trimming Today", "Trimming Cumulative", "Trimming Manpower", "Trimming Cost Per Piece",
@@ -68,6 +70,20 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
       const fabReq = calculateFabricRequirements(g.plannedMfrgQty, g.fabricConsumptionValue) || 0;
       const fabRec = f.receivedQty || 0;
       const fabBal = fabReq ? (fabReq - fabRec) : 0;
+
+      // Trims & Accessories Serializations
+      const trimNames = (rec.trims || []).map(x => x.item || '').join('; ');
+      const trimReqs = (rec.trims || []).map(x => x.requiredQty || '').join('; ');
+      const trimRecvs = (rec.trims || []).map(x => x.receivedQty || '').join('; ');
+      const trimBals = (rec.trims || []).map(x => x.balanceQtyToReceive !== undefined ? x.balanceQtyToReceive : '').join('; ');
+      const trimRemarks = (rec.trims || []).map(x => x.id || '').join('; '); // or other field
+
+      const accNames = (rec.accessories || []).map(x => x.item || '').join('; ');
+      const accReqs = (rec.accessories || []).map(x => x.requiredQty || '').join('; ');
+      const accRecvs = (rec.accessories || []).map(x => x.receivedQty || '').join('; ');
+      const accBals = (rec.accessories || []).map(x => x.balanceToReceive !== undefined ? x.balanceToReceive : '').join('; ');
+      const accRemarks = (rec.accessories || []).map(x => x.remarks || '').join('; ');
+
       const cutCum = calculateCuttingCumulative(c.qtyToday, c.qtyUptoYesterday) || 0;
       const cutBal = c.planCutQtyPct ? (Number(c.planCutQtyPct) - cutCum) : 0;
 
@@ -112,6 +128,19 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
         fabReq,
         fabRec,
         fabBal,
+        // Trims
+        `"${trimNames}"`,
+        `"${trimReqs}"`,
+        `"${trimRecvs}"`,
+        `"${trimBals}"`,
+        `"${trimRemarks}"`,
+        // Accessories
+        `"${accNames}"`,
+        `"${accReqs}"`,
+        `"${accRecvs}"`,
+        `"${accBals}"`,
+        `"${accRemarks}"`,
+        // Cutting
         `"${c.planStartDate || ''}"`,
         `"${c.actualStartDate || ''}"`,
         c.planCutQtyPct || 0,

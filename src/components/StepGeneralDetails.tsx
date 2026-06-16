@@ -57,18 +57,6 @@ export const StepGeneralDetails: React.FC<StepGeneralDetailsProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         
-        {/* 1. Sr.No */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-700">Sr.No</label>
-          <input
-            type="text"
-            placeholder="Enter Serial Number"
-            value={data.srNo || ''}
-            onChange={(e) => handleChange('srNo', e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 focus:bg-white text-gray-900 border border-gray-200 focus:border-emerald-500 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all font-semibold font-mono"
-          />
-        </div>
-
         {/* 2. Buyer Name */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-bold text-gray-700">Buyer Name</label>

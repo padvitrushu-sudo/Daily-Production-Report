@@ -76,24 +76,6 @@ export const BranchHeader: React.FC<BranchHeaderProps> = ({
         {/* Middle/Right: Branch Selection and Actions */}
         <div className="flex flex-wrap items-center gap-3">
           
-          {user && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-gray-700 rounded-xl border border-gray-200">
-              <User className="w-4 h-4 text-emerald-600" />
-              <div className="text-left font-sans">
-                <p className="text-[9px] font-bold text-gray-400 uppercase leading-none">{user.branch === 'Admin' ? 'Admin' : 'Operator'}</p>
-                <p className="text-xs font-black tracking-tight text-gray-800 leading-none mt-1">{user.label}</p>
-              </div>
-              <button
-                onClick={onLogout}
-                type="button"
-                className="ml-2.5 p-1 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
           <div className="flex items-center bg-gray-50 p-1.5 rounded-xl border border-gray-100">
             {(['Dondaycha', 'Hojiwala', 'Sachin', 'Ambernath'] as Branch[]).map((branchName) => {
               const isActive = currentBranch === branchName;
@@ -111,13 +93,13 @@ export const BranchHeader: React.FC<BranchHeaderProps> = ({
                     isActive
                       ? 'bg-white text-emerald-600 shadow-md ring-1 ring-black/5'
                       : isBlocked
-                      ? 'text-gray-300 cursor-not-allowed opacity-40'
+                      ? 'text-gray-300 cursor-not-allowed opacity-40 hover:bg-transparent'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/60'
                   }`}
                   title={isBlocked ? `Access locked to ${user?.branch} Branch only` : `Connect to ${branchName}`}
                 >
                   <MapPin className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-500 fill-emerald-100' : 'text-gray-400'}`} />
-                  <span>{branchName}</span>
+                  <span className="font-mono lowercase font-bold text-xs">{branchName.toLowerCase()}</span>
                   {!isBlocked && (
                     <span className={`w-1.5 h-1.5 rounded-full ${isConfigured ? 'bg-emerald-500' : 'bg-amber-400'}`} title={getStatusText(branchName)}></span>
                   )}
@@ -136,6 +118,25 @@ export const BranchHeader: React.FC<BranchHeaderProps> = ({
             >
               <Settings className="w-5 h-5 animate-hover-spin" />
             </button>
+          )}
+
+          {user && (
+            <div className="flex flex-col items-end gap-1 pl-2.5 border-l border-gray-100">
+              <button
+                onClick={onLogout}
+                type="button"
+                id="btn-logout"
+                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/40 rounded-lg font-bold text-[10px] flex items-center gap-1 shadow-xs transition-all active:scale-95"
+                title={`Sign out from ${user.label}`}
+              >
+                <LogOut className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>{user.branch === 'Admin' ? 'Supervisor Logout' : 'Operator Logout'}</span>
+              </button>
+              <div className="text-[10px] text-gray-400 font-medium font-mono flex items-center gap-1 leading-none mt-0.5">
+                <span>branch:</span>
+                <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-extrabold uppercase text-[9px] tracking-wide">{currentBranch}</span>
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -244,9 +244,9 @@ export const StepCutting: React.FC<StepCuttingProps> = ({
             type="button"
             onClick={handleAddLog}
             disabled={logQty === '' || Number(logQty) <= 0}
-            className={`w-full py-2 px-4 rounded-lg font-bold text-sm tracking-tight flex items-center justify-center space-x-1.5 transition-all shadow-md ${
+            className={`w-full py-2 px-4 rounded-lg font-bold text-sm tracking-tight flex items-center justify-center space-x-1.5 transition-colors shadow-md ${
               logQty !== '' && Number(logQty) > 0
-                ? 'bg-emerald-650 hover:bg-emerald-700 text-white shadow-emerald-600/10'
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/10'
                 : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
             }`}
           >
@@ -373,10 +373,10 @@ export const StepCutting: React.FC<StepCuttingProps> = ({
           onClick={onNext}
           id="btn-save-step4"
           disabled={!isFormValid}
-          className={`px-5 py-2.5 rounded-xl font-bold text-sm tracking-tight flex items-center space-x-1.5 transition-all shadow-md ${
+          className={`px-5 py-2.5 rounded-xl font-bold text-sm tracking-tight flex items-center space-x-1.5 transition-colors shadow-md ${
             isFormValid
-              ? 'bg-emerald-650 hover:bg-emerald-750 text-white shadow-emerald-500/10'
-              : 'bg-gray-150 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/10'
+              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
           }`}
         >
           <span>Save & Next Step</span>

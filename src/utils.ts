@@ -169,9 +169,10 @@ export function calculateTrimBalance(requiredQty: number | '', receivedQty: numb
   return parseFloat((requiredQty - receivedQty).toFixed(2));
 }
 
-export function calculateAccessoryBalance(requiredQty: number | '', receivedQty: number | ''): number | '' {
-  if (requiredQty === '' || receivedQty === '' || isNaN(requiredQty) || isNaN(receivedQty)) return '';
-  return parseFloat((requiredQty - receivedQty).toFixed(2));
+export function calculateAccessoryBalance(requiredQty: number | '', receivedQty: number | ''): number | ' ' {
+  if (requiredQty === '' || isNaN(Number(requiredQty))) return ' ';
+  const recv = receivedQty === '' || isNaN(Number(receivedQty)) ? 0 : Number(receivedQty);
+  return parseFloat((Number(requiredQty) - recv).toFixed(2));
 }
 
 export function calculateCuttingCumulative(qtyToday: number | '', qtyUptoYesterday: number | ''): number | '' {
@@ -231,6 +232,8 @@ function doPost(e) {
         "Garment Description", "Fabric Description", "GSM", "Color", 
         "Order Quantity", "Planned Mfg Qty", "Ex Factory Date", "Plan Consumption Type",
         "Fabric Recv Date", "Fabric Required Qty", "Fabric Received Qty", "Fabric Balance Qty",
+        "Trim Item Name", "Trim Required Qty", "Trim Received Qty", "Trim Balance Qty", "Trim Remarks",
+        "Accessory Item Name", "Accessory Required Qty (Z)", "Accessory Received Qty (AA)", "Accessory Bal to Received (AB)", "Accessory Remark (AC)",
         "Cutting Plan Start", "Cutting Actual Start", "Cutting Plan Qty", "Cutting Today", "Cutting Cumulative", "Cutting Balance",
         "Sewing Input Today", "Sewing Input Cumulative", "Sewing Output Today", "Sewing Output Cumulative",
         "Trimming Today", "Trimming Cumulative", "Trimming Manpower", "Trimming Cost Per Piece",
@@ -260,6 +263,22 @@ function doPost(e) {
     var fabricRecv = fabric.receivedQty || 0;
     var fabricBal = fabricReq !== "" ? (fabricReq - fabricRecv) : "";
     
+    // Serializing trims
+    var trimsList = data.trims || [];
+    var trimNames = trimsList.map(function(t) { return t.item || ""; }).join("\n");
+    var trimReqs = trimsList.map(function(t) { return t.requiredQty || ""; }).join("\n");
+    var trimRecvs = trimsList.map(function(t) { return t.receivedQty || ""; }).join("\n");
+    var trimBals = trimsList.map(function(t) { return t.balanceQtyToReceive !== undefined ? t.balanceQtyToReceive : ""; }).join("\n");
+    var trimRemarks = trimsList.map(function(t) { return t.remarks || t.planInHouseDate || ""; }).join("\n");
+
+    // Serializing accessories
+    var accList = data.accessories || [];
+    var accNames = accList.map(function(a) { return a.item || ""; }).join("\n");
+    var accReqs = accList.map(function(a) { return a.requiredQty || ""; }).join("\n");
+    var accRecvs = accList.map(function(a) { return a.receivedQty || ""; }).join("\n");
+    var accBals = accList.map(function(a) { return a.balanceToReceive !== undefined ? a.balanceToReceive : ""; }).join("\n");
+    var accRemarks = accList.map(function(a) { return a.remarks || ""; }).join("\n");
+
     var cutCum = (cutting.qtyToday || 0) + (cutting.qtyUptoYesterday || 0);
     var cutBal = (cutting.planCutQtyPct || 0) - cutCum;
     
@@ -303,6 +322,19 @@ function doPost(e) {
       fabricReq,
       fabricRecv,
       fabricBal,
+      // Trims columns
+      trimNames,
+      trimReqs,
+      trimRecvs,
+      trimBals,
+      trimRemarks,
+      // Accessories columns
+      accNames,
+      accReqs,
+      accRecvs,
+      accBals,
+      accRemarks,
+      // Cutting columns
       cutting.planStartDate || "",
       cutting.actualStartDate || "",
       cutting.planCutQtyPct || "",
