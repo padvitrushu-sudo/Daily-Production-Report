@@ -1,0 +1,6 @@
+{
+  "name": "Daily Production Report",
+  "description": "Multi-step production report form with real-time calculations and Google Sheets integration support, optimized for mobile and desktop screens.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
