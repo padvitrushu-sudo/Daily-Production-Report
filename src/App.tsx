@@ -35,7 +35,8 @@ import {
   CloudLightning,
   RefreshCw,
   Wifi,
-  WifiOff
+  WifiOff,
+  Trash2
 } from 'lucide-react';
 
 export default function App() {
@@ -463,65 +464,128 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Grid of Active Drafts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {/* Elegant List of Active Drafts */}
+              <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-1">
                 {drafts.map((dt) => {
                   const isActive = dt.id === report.id;
                   const stepNum = dt.activeStep !== undefined ? dt.activeStep : 0;
-                  const sr = dt.general.srNo ? `Sr: ${dt.general.srNo}` : '';
-                  const style = dt.general.styleNo ? `Style: ${dt.general.styleNo}` : '';
+                  const sr = dt.general.srNo ? dt.general.srNo : '';
+                  const style = dt.general.styleNo ? dt.general.styleNo : '';
                   const buyer = dt.general.buyerName ? dt.general.buyerName : '';
-                  
-                  const label = [sr, style, buyer].filter(Boolean).join(' | ') || 'New Form Outline';
+                  const qty = dt.general.orderQuantity ? dt.general.orderQuantity : '';
+                  const description = dt.general.garmentDescription ? dt.general.garmentDescription : '';
+
+                  const hasInfo = sr || style || buyer;
 
                   return (
                     <div
                       key={dt.id}
-                      className={`relative rounded-xl border p-3 flex flex-col justify-between transition-all cursor-pointer select-none group ${
+                      onClick={() => setActiveDraftId(dt.id)}
+                      className={`relative rounded-xl border p-3 flex flex-col md:flex-row md:items-center justify-between gap-3.5 transition-all cursor-pointer select-none group ${
                         isActive
                           ? 'border-emerald-500 bg-emerald-50/20 ring-2 ring-emerald-500/10'
                           : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-slate-50'
                       }`}
-                      onClick={() => setActiveDraftId(dt.id)}
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full uppercase tracking-wider truncate">
-                            {dt.branch}
-                          </span>
-                          {drafts.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm("Are you sure you want to discard this active form draft?")) {
-                                  const filtered = drafts.filter(x => x.id !== dt.id);
-                                  setDrafts(filtered);
-                                  if (isActive) {
-                                    setActiveDraftId(filtered[0].id);
-                                  }
-                                  deleteReportFromSupabase(dt.id).catch(err => {
-                                    console.error("Draft remove delayed in cloud:", err);
-                                  });
-                                }
-                              }}
-                              className="text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md p-1 transition-colors opacity-65 group-hover:opacity-100"
-                              title="Discard Draft"
-                            >
-                              ✕
-                            </button>
+                      {/* Left: Indicator & Content Group */}
+                      <div className="flex items-start md:items-center space-x-3.5 flex-1 min-w-0">
+                        {/* Selector/Sync Indicator */}
+                        <div className="mt-1 md:mt-0 flex-shrink-0">
+                          {isActive ? (
+                            <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center text-white ring-4 ring-emerald-500/10 shadow-sm">
+                              <span className="w-2 h-2 rounded-full bg-white block animate-pulse" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-200 bg-white group-hover:border-emerald-400 group-hover:bg-emerald-50/35 transition-all" />
                           )}
                         </div>
-                        <p className={`text-xs font-bold leading-normal truncate ${isActive ? 'text-emerald-950 font-extrabold' : 'text-gray-700'}`}>
-                          {label}
-                        </p>
+
+                        {/* Detailed Column Grid */}
+                        <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 items-center">
+                          {/* Project Identifiers */}
+                          <div className="md:col-span-5 min-w-0">
+                            {hasInfo ? (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {sr && (
+                                  <span className="text-xs font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded font-mono">
+                                    Sr: {sr}
+                                  </span>
+                                )}
+                                {style && (
+                                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded font-mono">
+                                    Style: {style}
+                                  </span>
+                                )}
+                                {buyer && (
+                                  <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded truncate max-w-[150px]">
+                                    {buyer}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs font-extrabold text-gray-400 italic">
+                                New Form Outline (Unsaved / Empty)
+                              </span>
+                            )}
+                            {description && (
+                              <p className="text-[11px] text-gray-400 mt-1 truncate max-w-[340px]">
+                                {description}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Order Quantity Metadata */}
+                          <div className="md:col-span-3 text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                            {qty ? (
+                              <span className="font-mono text-emerald-700 bg-emerald-50/50 px-2 py-0.5 rounded">
+                                {Number(qty).toLocaleString()} pcs
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-gray-300 italic">No Qty set</span>
+                            )}
+                          </div>
+
+                          {/* Branch indicator */}
+                          <div className="md:col-span-2">
+                            <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider block w-fit">
+                              {dt.branch}
+                            </span>
+                          </div>
+
+                          {/* Progress display */}
+                          <div className="md:col-span-2 flex items-center space-x-1.5 text-xs text-gray-400 font-semibold">
+                            <span>Step:</span>
+                            <span className="text-emerald-700 bg-emerald-50 font-extrabold px-2 py-0.5 rounded text-[11px] font-mono whitespace-nowrap">
+                              {stepNum + 1} of 10
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-dashed border-gray-105 text-[10px] text-gray-400 font-semibold">
-                        <span>Progress:</span>
-                        <span className="text-emerald-700 bg-emerald-50 font-bold px-1.5 py-0.5 rounded animate-fade-in">
-                          Step {stepNum + 1} of 10
-                        </span>
+                      {/* Right Side Action Menu */}
+                      <div className="flex items-center justify-end flex-shrink-0">
+                        {drafts.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm("Are you sure you want to discard this active form draft?")) {
+                                const filtered = drafts.filter(x => x.id !== dt.id);
+                                setDrafts(filtered);
+                                if (isActive) {
+                                  setActiveDraftId(filtered[0].id);
+                                }
+                                deleteReportFromSupabase(dt.id).catch(err => {
+                                  console.error("Draft remove delayed in cloud:", err);
+                                });
+                              }
+                            }}
+                            className="text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg p-2 transition-all"
+                            title="Discard Draft"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );

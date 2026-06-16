@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { authenticateBranchUser } from '../lib/supabase';
 import { Branch } from '../types';
-import { Lock, User, MapPin, CheckCircle, ShieldAlert, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { Lock, User, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface LoginPageProps {
   onLoginSuccess: (user: { username: string; branch: Branch | 'Admin'; label: string }) => void;
@@ -46,24 +46,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  // Pre-fill a trial credential for the convenience of the reviewer
-  const handleSelectCredential = (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setError(null);
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 select-none font-sans antialiased">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Brand Logo */}
-        <div className="mx-auto h-14 w-14 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-emerald-500/10">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
+        <div className="mx-auto mb-4 flex justify-center">
+          <img
+            src="https://www.ginzalimited.com/cdn/shop/files/Ginza_logo.jpg?v=1668509673&width=500"
+            alt="GINZA Logo"
+            referrerPolicy="no-referrer"
+            className="h-16 w-auto object-contain rounded-xl shadow-md border border-gray-200"
+          />
         </div>
         
-        <h2 className="mt-6 text-center text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+        <h2 className="mt-4 text-center text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
           Daily Production Suite
         </h2>
         <p className="mt-2 text-center text-sm text-gray-500 font-medium">
@@ -144,82 +140,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               )}
             </button>
           </form>
-
-          {/* Quick Trial Credentials helper block for reviewers */}
-          <div className="border-t border-gray-100 pt-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-500">Fast Evaluator Switcher:</span>
-              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" /> Supabase Connection Ready
-              </span>
-            </div>
-            
-            <p className="text-[11px] text-gray-400 leading-normal">
-              Click any of the credentials below to pre-fill the form instantly. Test branch segregation and Admin global visibility.
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <button
-                type="button"
-                onClick={() => handleSelectCredential('hojiwala', 'Password123')}
-                className="text-left p-2.5 border border-dashed border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/20 active:bg-emerald-50/40 transition-all font-semibold"
-              >
-                <div className="text-gray-700 font-bold flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                  Hojiwala Operator
-                </div>
-                <div className="text-gray-400 mt-0.5 font-mono">hojiwala / Password123</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectCredential('sachin', 'Password123')}
-                className="text-left p-2.5 border border-dashed border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/20 active:bg-emerald-50/40 transition-all font-semibold"
-              >
-                <div className="text-gray-700 font-bold flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                  Sachin Operator
-                </div>
-                <div className="text-gray-400 mt-0.5 font-mono">sachin / Password123</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectCredential('dondaycha', 'Password123')}
-                className="text-left p-2.5 border border-dashed border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/20 active:bg-emerald-50/40 transition-all font-semibold"
-              >
-                <div className="text-gray-700 font-bold flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                  Dondaycha Operator
-                </div>
-                <div className="text-gray-400 mt-0.5 font-mono">dondaycha / Password123</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectCredential('ambernath', 'Password123')}
-                className="text-left p-2.5 border border-dashed border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/20 active:bg-emerald-50/40 transition-all font-semibold"
-              >
-                <div className="text-gray-700 font-bold flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                  Ambernath Operator
-                </div>
-                <div className="text-gray-400 mt-0.5 font-mono">ambernath / Password123</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectCredential('admin', 'admin123')}
-                className="col-span-2 text-left p-2.5 border border-dashed border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/20 active:bg-emerald-50/40 transition-all font-semibold"
-              >
-                <div className="text-gray-800 font-bold flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-blue-500 fill-blue-100" />
-                  Global Administrator
-                </div>
-                <div className="text-gray-400 mt-0.5 font-mono">admin / admin123</div>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
