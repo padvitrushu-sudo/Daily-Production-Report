@@ -204,7 +204,7 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * Google Apps Script to handle Daily Production Report submission
  * 
  * Instructions:
- * 1. Open your Google Sheet
+ * 1. Open your Google Sheet.
  * 2. Go to 'Extensions' > 'Apps Script'.
  * 3. Delete any code in Code.gs and paste this script.
  * 4. Save (click the floppy disk icon).
@@ -213,7 +213,7 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * 7. Set 'Execute as' to: 'Me (your email)'.
  * 8. Set 'Who has access' to: 'Anyone'.
  * 9. Click 'Deploy'. Authorize permissions when prompted.
- * 10. Copy the Web App URL and paste it in the Settings Tab in this Applet!
+ * 10. Copy the Web App URL and paste it in the Settings Tab in this App!
  */
 
 function doPost(e) {
@@ -226,7 +226,7 @@ function doPost(e) {
     var sheetName = data.branch || "Daily Data";
     var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
     
-    // Check if headers exist, if not, create them (73 columns matching A-BU exactly)
+    // Check if headers exist, if not, create them (74 columns including Column BV for Report ID)
     if (sheet.getLastRow() === 0) {
       var headers = [
         "Timestamp", "Sr.No", "Buyer Name", "Style No", "PO. Number", "PO Date", "Garment Description", "Fabric Description", "G.S.M ", "Color", 
@@ -240,7 +240,8 @@ function doPost(e) {
         "Today", "Cumulative", "Balance", "Total Used to Manpower", "", "Cost Per Piecs",
         "Today", "Cumulative", "Balance", "Today Re-submission", "Cumulative Resubmission", "% Re-submission ",
         "Today", "Cumulative", "Balance to Pack", "Total Used to Manpower", "", "Cost Per Pics",
-        "Today", "Cumulative", "Balance to Pack", "Possible FI Date", "Remark"
+        "Today", "Cumulative", "Balance to Pack", "Possible FI Date", "Remark",
+        "Report ID" // Column BV (Col 74) to prevent duplication during step-by-step saving
       ];
       sheet.appendRow(headers);
       sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#F3F4F6");
@@ -265,18 +266,18 @@ function doPost(e) {
     
     // Serializing trims
     var trimsList = data.trims || [];
-    var trimNames = trimsList.map(function(t) { return t.item || ""; }).join("\n");
-    var trimReqs = trimsList.map(function(t) { return t.requiredQty || ""; }).join("\n");
-    var trimRecvs = trimsList.map(function(t) { return t.receivedQty || ""; }).join("\n");
-    var trimBals = trimsList.map(function(t) { return t.balanceQtyToReceive !== undefined ? t.balanceQtyToReceive : ""; }).join("\n");
+    var trimNames = trimsList.map(function(t) { return t.item || ""; }).join("\\n");
+    var trimReqs = trimsList.map(function(t) { return t.requiredQty || ""; }).join("\\n");
+    var trimRecvs = trimsList.map(function(t) { return t.receivedQty || ""; }).join("\\n");
+    var trimBals = trimsList.map(function(t) { return t.balanceQtyToReceive !== undefined ? t.balanceQtyToReceive : ""; }).join("\\n");
     
     // Serializing accessories
     var accList = data.accessories || [];
-    var accNames = accList.map(function(a) { return a.item || ""; }).join("\n");
-    var accReqs = accList.map(function(a) { return a.requiredQty || ""; }).join("\n");
-    var accRecvs = accList.map(function(a) { return a.receivedQty || ""; }).join("\n");
-    var accBals = accList.map(function(a) { return a.balanceToReceive !== undefined ? a.balanceToReceive : ""; }).join("\n");
-    var accRemarks = accList.map(function(a) { return a.remarks || ""; }).join("\n");
+    var accNames = accList.map(function(a) { return a.item || ""; }).join("\\n");
+    var accReqs = accList.map(function(a) { return a.requiredQty || ""; }).join("\\n");
+    var accRecvs = accList.map(function(a) { return a.receivedQty || ""; }).join("\\n");
+    var accBals = accList.map(function(a) { return a.balanceToReceive !== undefined ? a.balanceToReceive : ""; }).join("\\n");
+    var accRemarks = accList.map(function(a) { return a.remarks || ""; }).join("\\n");
 
     var cutCum = (cutting.qtyToday || 0) + (cutting.qtyUptoYesterday || 0);
     var cutBal = (cutting.planCutQtyPct || 0) - cutCum;
@@ -390,15 +391,38 @@ function doPost(e) {
       ctn.cumulative || "",
       ctn.balanceToPack || "",
       ctn.possibleFiDate || "",
-      ctn.remark || ""
+      ctn.remark || "",
+      
+      // Report ID (Col BV: 74)
+      data.id || ""
     ];
     
-    sheet.appendRow(rowValues);
+    // Check if row with this Report ID already exists
+    var lastRow = sheet.getLastRow();
+    var existingRowIndex = -1;
+    
+    if (lastRow > 1 && data.id) {
+      var idValues = sheet.getRange(2, 74, lastRow - 1, 1).getValues();
+      for (var i = 0; i < idValues.length; i++) {
+        if (idValues[i][0] === data.id) {
+          existingRowIndex = i + 2; // 2 offset (1-based index + header skew)
+          break;
+        }
+      }
+    }
+    
+    if (existingRowIndex !== -1) {
+      // Overwrite the existing row values with updated step progress
+      sheet.getRange(existingRowIndex, 1, 1, rowValues.length).setValues([rowValues]);
+    } else {
+      // Append brand-new row for new production report
+      sheet.appendRow(rowValues);
+    }
     
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
       message: "Data entered successfully into sheet " + sheetName,
-      row: sheet.getLastRow()
+      row: existingRowIndex !== -1 ? existingRowIndex : sheet.getLastRow()
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
