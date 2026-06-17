@@ -40,19 +40,18 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
 
     // Headers matching the Google Sheet design
     const headers = [
-      "Timestamp", "Branch", "Sr.No", "Buyer Name", "Style No", "PO Number", "PO Date", 
-      "Garment Description", "Fabric Description", "GSM", "Color", 
-      "Order Quantity", "Planned Mfg Qty", "Ex Factory Date", "Plan Consumption Type",
-      "Fabric Recv Date", "Fabric Required Qty", "Fabric Received Qty", "Fabric Balance Qty",
-      "Trim Item Name", "Trim Required Qty", "Trim Received Qty", "Trim Balance Qty", "Trim Remarks",
-      "Accessory Item Name", "Accessory Required Qty (Z)", "Accessory Received Qty (AA)", "Accessory Bal to Received (AB)", "Accessory Remark (AC)",
-      "Cutting Plan Start", "Cutting Actual Start", "Cutting Plan Qty", "Cutting Today", "Cutting Cumulative", "Cutting Balance",
-      "Sewing Input Today", "Sewing Input Cumulative", "Sewing Output Today", "Sewing Output Cumulative",
-      "Trimming Today", "Trimming Cumulative", "Trimming Manpower", "Trimming Cost Per Piece",
-      "Finishing Type", "Finishing Today", "Finishing Cumulative", "Finishing Manpower",
-      "AQL Audit Today", "AQL Audit Cumulative", "AQL Resubmissions", "AQL Resubmission %",
-      "Ironing Today", "Ironing Cumulative", "Ironing Manpower", "Ironing Cost Per Piece",
-      "CTN Packing Today", "CTN Packing Cumulative", "CTN Packing Balance", "Possible FI Date", "Remarks"
+      "Timestamp", "Sr.No", "Buyer Name", "Style No", "PO. Number", "PO Date", "Garment Description", "Fabric Description", "G.S.M ", "Color", 
+      "Order Quantity", "Pland Mfrng Qty", "Ex. Factory Date", "Fabric", "Trims", "Required Qty", "Plan In House Date", "Received InHouse Date", "Received Qty", "Balance Qty Received",
+      "Item", "Required Qty", "Received Qty", "Balance Qty to Received",
+      "Items", "Required Qty", "Recived Qty", "Bal to Receieved", "Remarks",
+      "Plan Start Date", "Actual Start Date", "Plan Cut Qty (+ %)", "Actual Consumption", "Qty Today", "Qty Upto Yesterday", "Grand Total Cumulative", "Balance To Cut",
+      "Today", "Cumulative", "Balance to Load", "Remark",
+      "Today", "Cumulative", "Balance to Sew", "Remark",
+      "Today", "Cumulative", "Balance", "Total Used to Manpower", "Cost Per Piecs",
+      "Today", "Cumulative", "Balance", "Total Used to Manpower", "", "Cost Per Piecs",
+      "Today", "Cumulative", "Balance", "Today Re-submission", "Cumulative Resubmission", "% Re-submission ",
+      "Today", "Cumulative", "Balance to Pack", "Total Used to Manpower", "", "Cost Per Pics",
+      "Today", "Cumulative", "Balance to Pack", "Possible FI Date", "Remark"
     ];
 
     const csvRows = [headers.join(',')];
@@ -76,7 +75,6 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
       const trimReqs = (rec.trims || []).map(x => x.requiredQty || '').join('; ');
       const trimRecvs = (rec.trims || []).map(x => x.receivedQty || '').join('; ');
       const trimBals = (rec.trims || []).map(x => x.balanceQtyToReceive !== undefined ? x.balanceQtyToReceive : '').join('; ');
-      const trimRemarks = (rec.trims || []).map(x => x.id || '').join('; '); // or other field
 
       const accNames = (rec.accessories || []).map(x => x.item || '').join('; ');
       const accReqs = (rec.accessories || []).map(x => x.requiredQty || '').join('; ');
@@ -87,30 +85,13 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
       const cutCum = calculateCuttingCumulative(c.qtyToday, c.qtyUptoYesterday) || 0;
       const cutBal = c.planCutQtyPct ? (Number(c.planCutQtyPct) - cutCum) : 0;
 
-      let finActive = fin.subType || "Trimming";
-      let finToday = "", finCum = "", finMan = "";
-      if (finActive === "Trimming" && fin.trimming) {
-        finToday = String(fin.trimming.today);
-        finCum = String(fin.trimming.cumulative);
-        finMan = String(fin.trimming.totalUsedManpower);
-      } else if (finActive === "Checking" && fin.checking) {
-        finToday = String(fin.checking.today);
-        finCum = String(fin.checking.cumulative);
-        finMan = String(fin.checking.totalUsedManpower);
-      }
-
-      let aqlToday = "", aqlCum = "", aqlResub = "", aqlPct = "";
-      if (fin.aqlAudit) {
-        aqlToday = String(fin.aqlAudit.today || "");
-        aqlCum = String(fin.aqlAudit.cumulative || "");
-        aqlResub = String(fin.aqlAudit.cumulativeResubmission || "");
-        const computedPct = calculateAqlPct(Number(fin.aqlAudit.cumulativeResubmission), Number(fin.aqlAudit.cumulative));
-        aqlPct = computedPct ? `${computedPct}%` : '0%';
-      }
+      const chk = fin.checking || { today: '', cumulative: '', balance: '', totalUsedManpower: '', costPerPiece: '' };
+      const aql = fin.aqlAudit || { today: '', cumulative: '', balance: '', todayResubmission: '', cumulativeResubmission: '', pctResubmission: '' };
+      
+      const computedAqlPct = calculateAqlPct(Number(aql.cumulativeResubmission), Number(aql.cumulative)) || '0%';
 
       const values = [
         `"${new Date(rec.timestamp).toISOString()}"`,
-        `"${rec.branch}"`,
         `"${g.srNo || ''}"`,
         `"${g.buyerName || ''}"`,
         `"${g.styleNo || ''}"`,
@@ -123,50 +104,81 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
         g.orderQuantity || 0,
         g.plannedMfrgQty || 0,
         `"${g.exFactoryDate || ''}"`,
-        `"${g.planConsumptionType || ''}"`,
-        `"${f.receivedInHouseDate || ''}"`,
+        g.fabricConsumptionValue || 0,
+        g.trimsConsumptionValue || 0,
         fabReq,
+        `"${f.planInHouseDate || ''}"`,
+        `"${f.receivedInHouseDate || ''}"`,
         fabRec,
         fabBal,
-        // Trims
+        
+        // Trims (Col U-X: 21-24)
         `"${trimNames}"`,
         `"${trimReqs}"`,
         `"${trimRecvs}"`,
         `"${trimBals}"`,
-        `"${trimRemarks}"`,
-        // Accessories
+        
+        // Accessories (Col Y-AC: 25-29)
         `"${accNames}"`,
         `"${accReqs}"`,
         `"${accRecvs}"`,
         `"${accBals}"`,
         `"${accRemarks}"`,
-        // Cutting
+        
+        // Cutting (Col AD-AK: 30-37)
         `"${c.planStartDate || ''}"`,
         `"${c.actualStartDate || ''}"`,
         c.planCutQtyPct || 0,
+        c.actualConsumption || 0,
         c.qtyToday || 0,
+        c.qtyUptoYesterday || 0,
         cutCum,
         cutBal,
+        
+        // Sewing Input (Col AL-AO: 38-41)
         s.input ? s.input.today : 0,
         s.input ? s.input.cumulative : 0,
+        s.input ? s.input.balanceToLoad : 0,
+        `"${s.input ? s.input.remark : ''}"`,
+        
+        // Sewing Output (Col AP-AS: 42-45)
         s.output ? s.output.today : 0,
         s.output ? s.output.cumulative : 0,
+        s.output ? s.output.balanceToSew : 0,
+        `"${s.output ? s.output.remark : ''}"`,
+        
+        // Trimming (Col AT-AX: 46-50)
         t.today || 0,
         t.cumulative || 0,
+        t.balance || 0,
         t.totalUsedManpower || 0,
         (t.totalUsedManpower && t.today) ? (Number(t.totalUsedManpower) / Number(t.today)).toFixed(2) : 0,
-        `"${finActive}"`,
-        finToday,
-        finCum,
-        finMan,
-        aqlToday,
-        aqlCum,
-        aqlResub,
-        `"${aqlPct}"`,
+        
+        // Checking (Col AY-BD: 51-56)
+        chk.today || 0,
+        chk.cumulative || 0,
+        chk.balance || 0,
+        chk.totalUsedManpower || 0,
+        "", // Column BC blank
+        (chk.totalUsedManpower && chk.today) ? (Number(chk.totalUsedManpower) / Number(chk.today)).toFixed(2) : 0,
+        
+        // AQL Audit (Col BE-BJ: 57-62)
+        aql.today || 0,
+        aql.cumulative || 0,
+        aql.balance || 0,
+        aql.todayResubmission || 0,
+        aql.cumulativeResubmission || 0,
+        `"${computedAqlPct}"`,
+        
+        // Ironing & Packing (Col BK-BP: 63-68)
         i.today || 0,
         i.cumulative || 0,
+        i.balanceToPack || 0,
         i.totalUsedManpower || 0,
+        "", // Column BO blank
         i.costPerPiece || 0,
+        
+        // Carton Packing (Col BQ-BU: 69-73)
         ctn.today || 0,
         ctn.cumulative || 0,
         ctn.balanceToPack || 0,

@@ -158,10 +158,11 @@ export function calculateFabricBalance(requiredQty: number | '', receivedQty: nu
 }
 
 export function calculateTrimsRequirement(plannedMfrgQty: number | '', trimsConsumptionValue: number | ''): number | '' {
-  if (plannedMfrgQty === '' || trimsConsumptionValue === '' || isNaN(plannedMfrgQty) || isNaN(trimsConsumptionValue)) {
+  if (plannedMfrgQty === '' || isNaN(Number(plannedMfrgQty))) {
     return '';
   }
-  return parseFloat((plannedMfrgQty * trimsConsumptionValue).toFixed(2));
+  const factor = trimsConsumptionValue === '' || isNaN(Number(trimsConsumptionValue)) ? 5 : Number(trimsConsumptionValue);
+  return parseFloat((Number(plannedMfrgQty) * factor).toFixed(2));
 }
 
 export function calculateTrimBalance(requiredQty: number | '', receivedQty: number | ''): number | '' {
@@ -203,7 +204,7 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * Google Apps Script to handle Daily Production Report submission
  * 
  * Instructions:
- * 1. Open your Google Sheet: https://docs.google.com/spreadsheets/d/1IIOBRwrV-7YBTI7pY8O06PevDYnRX6H0_OiLEurHsqU/edit
+ * 1. Open your Google Sheet
  * 2. Go to 'Extensions' > 'Apps Script'.
  * 3. Delete any code in Code.gs and paste this script.
  * 4. Save (click the floppy disk icon).
@@ -225,22 +226,21 @@ function doPost(e) {
     var sheetName = data.branch || "Daily Data";
     var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
     
-    // Check if headers exist, if not, create them
+    // Check if headers exist, if not, create them (73 columns matching A-BU exactly)
     if (sheet.getLastRow() === 0) {
       var headers = [
-        "Timestamp", "Branch", "Sr.No", "Buyer Name", "Style No", "PO Number", "PO Date", 
-        "Garment Description", "Fabric Description", "GSM", "Color", 
-        "Order Quantity", "Planned Mfg Qty", "Ex Factory Date", "Plan Consumption Type",
-        "Fabric Recv Date", "Fabric Required Qty", "Fabric Received Qty", "Fabric Balance Qty",
-        "Trim Item Name", "Trim Required Qty", "Trim Received Qty", "Trim Balance Qty", "Trim Remarks",
-        "Accessory Item Name", "Accessory Required Qty (Z)", "Accessory Received Qty (AA)", "Accessory Bal to Received (AB)", "Accessory Remark (AC)",
-        "Cutting Plan Start", "Cutting Actual Start", "Cutting Plan Qty", "Cutting Today", "Cutting Cumulative", "Cutting Balance",
-        "Sewing Input Today", "Sewing Input Cumulative", "Sewing Output Today", "Sewing Output Cumulative",
-        "Trimming Today", "Trimming Cumulative", "Trimming Manpower", "Trimming Cost Per Piece",
-        "Finishing Type", "Finishing Today", "Finishing Cumulative", "Finishing Manpower",
-        "AQL Audit Today", "AQL Audit Cumulative", "AQL Resubmissions", "AQL Resubmission %",
-        "Ironing Today", "Ironing Cumulative", "Ironing Manpower", "Ironing Cost Per Piece",
-        "CTN Packing Today", "CTN Packing Cumulative", "CTN Packing Balance", "Possible FI Date", "Remarks"
+        "Timestamp", "Sr.No", "Buyer Name", "Style No", "PO. Number", "PO Date", "Garment Description", "Fabric Description", "G.S.M ", "Color", 
+        "Order Quantity", "Pland Mfrng Qty", "Ex. Factory Date", "Fabric", "Trims", "Required Qty", "Plan In House Date", "Received InHouse Date", "Received Qty", "Balance Qty Received",
+        "Item", "Required Qty", "Received Qty", "Balance Qty to Received",
+        "Items", "Required Qty", "Recived Qty", "Bal to Receieved", "Remarks",
+        "Plan Start Date", "Actual Start Date", "Plan Cut Qty (+ %)", "Actual Consumption", "Qty Today", "Qty Upto Yesterday", "Grand Total Cumulative", "Balance To Cut",
+        "Today", "Cumulative", "Balance to Load", "Remark",
+        "Today", "Cumulative", "Balance to Sew", "Remark",
+        "Today", "Cumulative", "Balance", "Total Used to Manpower", "Cost Per Piecs",
+        "Today", "Cumulative", "Balance", "Total Used to Manpower", "", "Cost Per Piecs",
+        "Today", "Cumulative", "Balance", "Today Re-submission", "Cumulative Resubmission", "% Re-submission ",
+        "Today", "Cumulative", "Balance to Pack", "Total Used to Manpower", "", "Cost Per Pics",
+        "Today", "Cumulative", "Balance to Pack", "Possible FI Date", "Remark"
       ];
       sheet.appendRow(headers);
       sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#F3F4F6");
@@ -269,8 +269,7 @@ function doPost(e) {
     var trimReqs = trimsList.map(function(t) { return t.requiredQty || ""; }).join("\n");
     var trimRecvs = trimsList.map(function(t) { return t.receivedQty || ""; }).join("\n");
     var trimBals = trimsList.map(function(t) { return t.balanceQtyToReceive !== undefined ? t.balanceQtyToReceive : ""; }).join("\n");
-    var trimRemarks = trimsList.map(function(t) { return t.remarks || t.planInHouseDate || ""; }).join("\n");
-
+    
     // Serializing accessories
     var accList = data.accessories || [];
     var accNames = accList.map(function(a) { return a.item || ""; }).join("\n");
@@ -282,29 +281,24 @@ function doPost(e) {
     var cutCum = (cutting.qtyToday || 0) + (cutting.qtyUptoYesterday || 0);
     var cutBal = (cutting.planCutQtyPct || 0) - cutCum;
     
-    var finActive = finishing.subType || "Trimming";
-    var finToday = "", finCum = "", finMan = "";
-    if (finActive === "Trimming" && finishing.trimming) {
-      finToday = finishing.trimming.today;
-      finCum = finishing.trimming.cumulative;
-      finMan = finishing.trimming.totalUsedManpower;
-    } else if (finActive === "Checking" && finishing.checking) {
-      finToday = finishing.checking.today;
-      finCum = finishing.checking.cumulative;
-      finMan = finishing.checking.totalUsedManpower;
-    }
-    
-    var aqlToday = "", aqlCum = "", aqlResub = "", aqlPct = "";
+    // AQL Details
+    var aqlToday = "";
+    var aqlCum = "";
+    var aqlBal = "";
+    var aqlTodayResub = "";
+    var aqlCumResub = "";
+    var aqlPct = 0;
     if (finishing.aqlAudit) {
       aqlToday = finishing.aqlAudit.today || "";
       aqlCum = finishing.aqlAudit.cumulative || "";
-      aqlResub = finishing.aqlAudit.cumulativeResubmission || "";
-      aqlPct = aqlCum ? ((aqlResub / aqlCum) * 100) : 0;
+      aqlBal = finishing.aqlAudit.balance || "";
+      aqlTodayResub = finishing.aqlAudit.todayResubmission || "";
+      aqlCumResub = finishing.aqlAudit.cumulativeResubmission || "";
+      aqlPct = aqlCum ? ((aqlCumResub / aqlCum) * 100) : 0;
     }
 
     var rowValues = [
       timestamp,
-      data.branch || "",
       general.srNo || "",
       general.buyerName || "",
       general.styleNo || "",
@@ -317,50 +311,81 @@ function doPost(e) {
       general.orderQuantity || "",
       plannedMfg,
       general.exFactoryDate || "",
-      general.planConsumptionType || "",
-      fabric.receivedInHouseDate || "",
+      general.fabricConsumptionValue || "",
+      general.trimsConsumptionValue || "",
       fabricReq,
+      fabric.planInHouseDate || "",
+      fabric.receivedInHouseDate || "",
       fabricRecv,
       fabricBal,
-      // Trims columns
+      
+      // Trims columns (Col U-X: 21-24)
       trimNames,
       trimReqs,
       trimRecvs,
       trimBals,
-      trimRemarks,
-      // Accessories columns
+      
+      // Accessories columns (Col Y-AC: 25-29)
       accNames,
       accReqs,
       accRecvs,
       accBals,
       accRemarks,
-      // Cutting columns
+      
+      // Cutting columns (Col AD-AK: 30-37)
       cutting.planStartDate || "",
       cutting.actualStartDate || "",
       cutting.planCutQtyPct || "",
+      cutting.actualConsumption || "",
       cutting.qtyToday || "",
+      cutting.qtyUptoYesterday || "",
       cutCum,
       cutBal,
+      
+      // Sewing Input (Col AL-AO: 38-41)
       sewing.input ? sewing.input.today : "",
       sewing.input ? sewing.input.cumulative : "",
+      sewing.input ? sewing.input.balanceToLoad : "",
+      sewing.input ? sewing.input.remark : "",
+      
+      // Sewing Output (Col AP-AS: 42-45)
       sewing.output ? sewing.output.today : "",
       sewing.output ? sewing.output.cumulative : "",
+      sewing.output ? sewing.output.balanceToSew : "",
+      sewing.output ? sewing.output.remark : "",
+      
+      // Trimming (Col AT-AX: 46-50)
       trimming.today || "",
       trimming.cumulative || "",
+      trimming.balance || "",
       trimming.totalUsedManpower || "",
-      (trimming.totalUsedManpower && trimming.today) ? (trimming.totalUsedManpower / trimming.today) : "",
-      finActive,
-      finToday,
-      finCum,
-      finMan,
+      (trimming.totalUsedManpower && trimming.today) ? (trimming.totalUsedManpower / trimming.today).toFixed(2) : "",
+      
+      // Checking (Col AY-BD: 51-56)
+      finishing.checking ? finishing.checking.today : "",
+      finishing.checking ? finishing.checking.cumulative : "",
+      finishing.checking ? finishing.checking.balance : "",
+      finishing.checking ? finishing.checking.totalUsedManpower : "",
+      "", // Column BC blank
+      finishing.checking && finishing.checking.totalUsedManpower && finishing.checking.today ? (finishing.checking.totalUsedManpower / finishing.checking.today).toFixed(2) : "",
+      
+      // AQL Audit (Col BE-BJ: 57-62)
       aqlToday,
       aqlCum,
-      aqlResub,
-      aqlPct ? aqlPct.toFixed(2) + "%" : "",
+      aqlBal,
+      aqlTodayResub,
+      aqlCumResub,
+      aqlPct ? aqlPct.toFixed(2) + "%" : "0%",
+      
+      // Ironing & Packing (Col BK-BP: 63-68)
       ironing.today || "",
       ironing.cumulative || "",
+      ironing.balanceToPack || "",
       ironing.totalUsedManpower || "",
+      "", // Column BO blank
       ironing.costPerPiece || "",
+      
+      // Carton Packing (Col BQ-BU: 69-73)
       ctn.today || "",
       ctn.cumulative || "",
       ctn.balanceToPack || "",
@@ -374,31 +399,18 @@ function doPost(e) {
       status: "success",
       message: "Data entered successfully into sheet " + sheetName,
       row: sheet.getLastRow()
-    })).setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS"
-    });
+    })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       status: "error",
       message: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS"
-    });
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function doOptions(e) {
   return ContentService.createTextOutput("")
-    .setMimeType(ContentService.MimeType.TEXT)
-    .setHeaders({
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type"
-    });
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 `;

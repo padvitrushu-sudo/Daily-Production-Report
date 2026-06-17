@@ -218,13 +218,13 @@ export const StepPlanConsumption: React.FC<StepPlanConsumptionProps> = ({
               <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
               <span>Trims Requirements & In-House Tracking</span>
             </h3>
-            <span className="text-xs text-gray-500">Trim constant value: <strong>{generalData.trimsConsumptionValue || 0}</strong> pcs/garment</span>
+            <span className="text-xs text-gray-500">Trim factor: <strong>{generalData.trimsConsumptionValue || '5'}</strong> (Default: 5)</span>
           </div>
 
           {/* Quick Add Trim Form */}
           <div className="p-4 bg-white rounded-xl border border-gray-150 flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[200px] flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-600">Trim Item Name</label>
+              <label className="text-xs font-bold text-gray-650">Item (u)</label>
               <input
                 type="text"
                 placeholder="e.g. Logo buttons, Main zipper, Care label"
@@ -233,8 +233,10 @@ export const StepPlanConsumption: React.FC<StepPlanConsumptionProps> = ({
                 className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
-            <div className="w-[120px] flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-600">Received Qty</label>
+            <div className="w-[124px] flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-600">Received Qty (w)</label>
+              </div>
               <input
                 type="number"
                 placeholder="Initial load"
@@ -250,7 +252,7 @@ export const StepPlanConsumption: React.FC<StepPlanConsumptionProps> = ({
               className={`px-3 py-2 rounded-lg text-sm font-bold flex items-center space-x-1 ${
                 trimItemName.trim()
                   ? 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                  : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
               }`}
             >
               <Plus className="w-4 h-4" />
@@ -264,10 +266,10 @@ export const StepPlanConsumption: React.FC<StepPlanConsumptionProps> = ({
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100 text-gray-700 font-bold uppercase tracking-wider">
-                    <th className="p-3">Trim Item</th>
-                    <th className="p-3">Required Qty</th>
-                    <th className="p-3">Received Qty (manual)</th>
-                    <th className="p-3">Balance Qty to Received</th>
+                    <th className="p-3">Item (u)</th>
+                    <th className="p-3">Required Qty (v)</th>
+                    <th className="p-3">Received Qty (w)</th>
+                    <th className="p-3">Balance Qty to Received (x)</th>
                     <th className="p-3 text-center">Action</th>
                   </tr>
                 </thead>
