@@ -86,6 +86,7 @@ export async function authenticateBranchUser(username: string, password: string)
       hojiwala: { password: 'Password123', branch: 'Hojiwala', label: 'Hojiwala Operator' },
       sachin: { password: 'Password123', branch: 'Sachin', label: 'Sachin Operator' },
       dondaicha: { password: 'Password123', branch: 'Dondaicha', label: 'Dondaicha Operator' },
+      dondaycha: { password: 'Password123', branch: 'Dondaicha', label: 'Dondaicha Operator' },
       ambernath: { password: 'Password123', branch: 'Ambernath', label: 'Ambernath Operator' },
     };
 
@@ -97,21 +98,40 @@ export async function authenticateBranchUser(username: string, password: string)
       };
     }
 
+    // Support both spelling variants in database calls
+    const usernamesToTry = [cleanUsername];
+    if (cleanUsername === 'dondaicha') {
+      usernamesToTry.push('dondaycha');
+    } else if (cleanUsername === 'dondaycha') {
+      usernamesToTry.push('dondaicha');
+    }
+
+    // Use in() and maybeSingle() to handle both spellings robustly
     const { data, error } = await supabase
       .from('branch_users')
       .select('*')
-      .eq('username', cleanUsername)
+      .in('username', usernamesToTry)
       .eq('password', cleanPassword)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       return { success: false, branch: 'Hojiwala', label: '', error: 'Invalid username or password.' };
     }
 
+    let userBranch = data.branch as any;
+    if (userBranch === 'Dondaycha') {
+      userBranch = 'Dondaicha';
+    }
+
+    let userLabel = data.label || '';
+    if (userLabel.includes('Dondaycha')) {
+      userLabel = userLabel.replace('Dondaycha', 'Dondaicha');
+    }
+
     return {
       success: true,
-      branch: data.branch as Branch | 'Admin',
-      label: data.label
+      branch: userBranch as Branch | 'Admin',
+      label: userLabel
     };
   } catch (err: any) {
     return { success: false, branch: 'Hojiwala', label: '', error: err.message || 'Network error authenticating.' };
