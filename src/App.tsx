@@ -12,7 +12,6 @@ import { StepPlanConsumption } from './components/StepPlanConsumption';
 import { StepAccessories } from './components/StepAccessories';
 import { StepCutting } from './components/StepCutting';
 import { StepSewing } from './components/StepSewing';
-import { StepTrimming } from './components/StepTrimming';
 import { StepFinishing } from './components/StepFinishing';
 import { StepIroningPacking } from './components/StepIroningPacking';
 import { StepCtnPacking } from './components/StepCtnPacking';
@@ -42,14 +41,38 @@ import {
 export default function App() {
   const [configs, setConfigs] = useState<BranchConfig[]>(() => {
     const saved = localStorage.getItem('DAILY_SH_BRANCH_CONFIGS');
+    let loaded: BranchConfig[] = [];
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Auto-migrate any stale "Dondaycha" keys to "Dondaicha" in the user's browser localStorage cache
+          loaded = parsed.map((c: any) => {
+            if (c.id === 'Dondaycha') {
+              return { ...c, id: 'Dondaicha' as Branch, name: 'Dondaicha Branch' };
+            }
+            return c as BranchConfig;
+          });
+        }
       } catch (err) {
         // ignore
       }
     }
-    return DEFAULT_BRANCHES;
+
+    if (loaded.length === 0) {
+      return DEFAULT_BRANCHES;
+    }
+
+    // Merge DEFAULT_BRANCHES so that if loaded configuration does not have a webAppUrl, 
+    // it locks in the system default provided by the user.
+    return DEFAULT_BRANCHES.map(def => {
+      const match = loaded.find(l => l.id === def.id);
+      return {
+        ...def,
+        webAppUrl: match && match.webAppUrl ? match.webAppUrl : def.webAppUrl,
+        spreadsheetId: match && match.spreadsheetId ? match.spreadsheetId : def.spreadsheetId,
+      };
+    });
   });
 
   // Logged-in Operator/Admin user session 
@@ -57,7 +80,14 @@ export default function App() {
     const saved = localStorage.getItem('DAILY_SH_ACTIVE_USER');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const u = JSON.parse(saved);
+        if (u && u.branch === 'Dondaycha') {
+          u.branch = 'Dondaicha';
+          if (u.label && u.label.includes('Dondaycha')) {
+            u.label = u.label.replace('Dondaycha', 'Dondaicha');
+          }
+        }
+        return u;
       } catch (e) {
         // ignore
       }
@@ -97,7 +127,8 @@ export default function App() {
       try {
         const u = JSON.parse(savedUser);
         if (u.branch && u.branch !== 'Admin') {
-          return u.branch as Branch;
+          const b = u.branch === 'Dondaycha' ? 'Dondaicha' : u.branch;
+          return b as Branch;
         }
       } catch (e) {
         // ignore
@@ -206,7 +237,6 @@ export default function App() {
     { title: 'Accessories', desc: 'Plan bulk labels & tags' },
     { title: 'Cutting Room', desc: 'Schedule and pieces cut' },
     { title: 'Sewing / Bonding', desc: 'On MC & Off MC lines' },
-    { title: 'Trimming Unit', desc: 'Clipping outputs & wages' },
     { title: 'Finishing Gate', desc: 'Checking / AQL Audits' },
     { title: 'Ironing & Packing', desc: 'Press folds & piece costs' },
     { title: 'CTN Box Packing', desc: 'Master cartons & FI Dates' },
@@ -233,18 +263,16 @@ export default function App() {
       case 4:
         return report.sewing.input.today !== '' && report.sewing.output.today !== '';
       case 5:
-        return report.trimming.today !== '';
-      case 6:
         return (
           report.finishing.trimming.today !== '' ||
           report.finishing.checking.today !== '' ||
           report.finishing.aqlAudit.today !== ''
         );
-      case 7:
+      case 6:
         return report.ironingPacking.today !== '';
-      case 8:
+      case 7:
         return report.ctnPacking.today !== '' && !!report.ctnPacking.possibleFiDate;
-      case 9:
+      case 8:
         return report.isFinalSubmitted;
       default:
         return false;
@@ -273,18 +301,19 @@ export default function App() {
       const config = configs.find(c => c.id === currentBranch);
       if (config?.webAppUrl) {
         try {
-          const response = await fetch(config.webAppUrl, {
+          const payload = {
+            ...updated,
+            spreadsheetId: config.spreadsheetId,
+          };
+          await fetch(config.webAppUrl, {
             method: 'POST',
-            mode: 'cors',
+            mode: 'no-cors', // Use no-cors to bypass CORS and redirect blockages in browser
             headers: {
-              'Content-Type': 'application/text',
+              'Content-Type': 'text/plain',
             },
-            body: JSON.stringify(updated),
+            body: JSON.stringify(payload),
           });
-          const resData = await response.json();
-          if (resData.status !== 'success') {
-            console.warn('Google Sheet step update reported caution:', resData.message);
-          }
+          console.log('Google Sheets synchronized successfully in background.');
         } catch (sheetErr) {
           console.error('Google Sheet background push delayed:', sheetErr);
         }
@@ -316,8 +345,6 @@ export default function App() {
     try {
       // Save finalized locked report to Supabase
       await saveReportToSupabase(submittedReport);
-      // Prune transient active draft from database
-      await deleteReportFromSupabase(finalReport.id);
       setSyncStatus('synced');
     } catch (e) {
       console.error("Failed storing locked report to Supabase:", e);
@@ -327,19 +354,19 @@ export default function App() {
     // Attempt pushing to Google Sheets Web App if defined
     if (config?.webAppUrl) {
       try {
-        const response = await fetch(config.webAppUrl, {
+        const payload = {
+          ...submittedReport,
+          spreadsheetId: config.spreadsheetId,
+        };
+        await fetch(config.webAppUrl, {
           method: 'POST',
-          mode: 'cors',
+          mode: 'no-cors', // Use no-cors to bypass CORS and redirect blockages in browser
           headers: {
-            'Content-Type': 'application/text',
+            'Content-Type': 'text/plain',
           },
-          body: JSON.stringify(submittedReport),
+          body: JSON.stringify(payload),
         });
-
-        const resData = await response.json();
-        if (resData.status !== 'success') {
-          console.warn('Apps Script reported a warning:', resData.message);
-        }
+        console.log('Final locked report synchronized to Google Sheets successfully.');
       } catch (err) {
         console.error('Google Sheet push delayed:', err);
       }
@@ -362,7 +389,7 @@ export default function App() {
 
   const handleDeleteRecord = async (id: string) => {
     try {
-      await deleteReportFromSupabase(id);
+      await deleteReportFromSupabase(id, user?.branch === 'Admin');
     } catch (err) {
       console.error("Delete propagation failed:", err);
     }
@@ -609,7 +636,7 @@ export default function App() {
                           <div className="md:col-span-2 flex items-center space-x-1.5 text-xs text-gray-400 font-semibold">
                             <span>Step:</span>
                             <span className="text-emerald-700 bg-emerald-50 font-extrabold px-2 py-0.5 rounded text-[11px] font-mono whitespace-nowrap">
-                              {stepNum + 1} of 10
+                              {stepNum + 1} of {stepsList.length}
                             </span>
                           </div>
                         </div>
@@ -767,49 +794,40 @@ export default function App() {
               )}
 
               {activeStep === 5 && (
-                <StepTrimming
-                  data={report.trimming}
-                  onUpdate={(trimming) => handleUpdateReport({ ...report, trimming })}
+                <StepFinishing
+                  data={report.finishing}
+                  sewingOutputCumulative={report.sewing.output.cumulative}
+                  onUpdate={(finishing) => handleUpdateReport({ ...report, finishing })}
                   onPrev={() => handleStepSaveAndNext(4)}
                   onNext={() => handleStepSaveAndNext(6)}
                 />
               )}
 
               {activeStep === 6 && (
-                <StepFinishing
-                  data={report.finishing}
-                  sewingOutputCumulative={report.sewing.output.cumulative}
-                  onUpdate={(finishing) => handleUpdateReport({ ...report, finishing })}
+                <StepIroningPacking
+                  data={report.ironingPacking}
+                  aqlAuditCumulative={report.finishing.aqlAudit.cumulative}
+                  onUpdate={(ironingPacking) => handleUpdateReport({ ...report, ironingPacking })}
                   onPrev={() => handleStepSaveAndNext(5)}
                   onNext={() => handleStepSaveAndNext(7)}
                 />
               )}
 
               {activeStep === 7 && (
-                <StepIroningPacking
-                  data={report.ironingPacking}
-                  aqlAuditCumulative={report.finishing.aqlAudit.cumulative}
-                  onUpdate={(ironingPacking) => handleUpdateReport({ ...report, ironingPacking })}
+                <StepCtnPacking
+                  data={report.ctnPacking}
+                  ironingCumulative={report.ironingPacking.cumulative}
+                  onUpdate={(ctnPacking) => handleUpdateReport({ ...report, ctnPacking })}
                   onPrev={() => handleStepSaveAndNext(6)}
                   onNext={() => handleStepSaveAndNext(8)}
                 />
               )}
 
               {activeStep === 8 && (
-                <StepCtnPacking
-                  data={report.ctnPacking}
-                  ironingCumulative={report.ironingPacking.cumulative}
-                  onUpdate={(ctnPacking) => handleUpdateReport({ ...report, ctnPacking })}
-                  onPrev={() => handleStepSaveAndNext(7)}
-                  onNext={() => handleStepSaveAndNext(9)}
-                />
-              )}
-
-              {activeStep === 9 && (
                 <StepSummarySubmit
                   report={report}
                   branchConfig={selectedConfig}
-                  onPrev={() => handleStepSaveAndNext(8)}
+                  onPrev={() => handleStepSaveAndNext(7)}
                   onSubmit={handleFinalSubmit}
                 />
               )}

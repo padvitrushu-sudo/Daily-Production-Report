@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type Branch = 'Dondaycha' | 'Hojiwala' | 'Sachin' | 'Ambernath';
+export type Branch = 'Dondaicha' | 'Hojiwala' | 'Sachin' | 'Ambernath';
 
 export interface GeneralDetails {
   srNo: string;
@@ -56,6 +56,7 @@ export interface CuttingDetails {
   actualConsumption: number | '';
   qtyToday: number | '';
   qtyUptoYesterday: number | '';
+  history?: { id: string; date: string; qty: number; createdAt?: number }[];
   // Calculations:
   // grandTotalCumulative = qtyToday + qtyUptoYesterday
   // balanceToCut = planCutQtyPct - grandTotalCumulative
@@ -109,6 +110,9 @@ export interface FinishingDetails {
     cumulativeResubmission: number | '';
     pctResubmission: number | ''; // (cumulativeResubmission / cumulative) * 100
   };
+  trimmingHistory?: { id: string; qty: number; createdAt: number }[];
+  checkingHistory?: { id: string; qty: number; createdAt: number }[];
+  aqlHistory?: { id: string; qty: number; createdAt: number }[];
 }
 
 export interface IroningPackingDetails {

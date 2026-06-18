@@ -7,8 +7,8 @@ import { ProductionReport, Branch, GeneralDetails, FabricDetails, CuttingDetails
 
 export const DEFAULT_BRANCHES: { id: Branch; name: string; spreadsheetId: string; webAppUrl: string }[] = [
   {
-    id: 'Dondaycha',
-    name: 'Dondaycha Branch',
+    id: 'Dondaicha',
+    name: 'Dondaicha Branch',
     spreadsheetId: '1IIOBRwrV-7YBTI7pY8O06PevDYnRX6H0_OiLEurHsqU',
     webAppUrl: '',
   },
@@ -16,19 +16,19 @@ export const DEFAULT_BRANCHES: { id: Branch; name: string; spreadsheetId: string
     id: 'Hojiwala',
     name: 'Hojiwala Branch',
     spreadsheetId: '107lQoWsOCPpSNFm4L36Ym2EFElxsdgeEPMfGYvBCj5M',
-    webAppUrl: '',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbymtLD5w1L71sEJBHToOqrsxuh-GIvcbRZWeFlBlZcnkhvN08IFiWc7ISbcQeI8QXzY/exec',
   },
   {
     id: 'Sachin',
     name: 'Sachin Branch',
     spreadsheetId: '12IBk2ZI09uSg5HTCDTNphp3RONJMNAFwFCy1nDZqmNc',
-    webAppUrl: '',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbyzPY3Luq74WJ-DoXosNZHfJeS3nj_s8pcVgbVBwbQ_bkeJlIo2Vp6xzG8lV5A1wqwr/exec',
   },
   {
     id: 'Ambernath',
     name: 'Ambernath Branch',
     spreadsheetId: '1cj-Coa7WdvmnAMyuEh4UPM3ckpOMQ6h-VDHipF7cfnE',
-    webAppUrl: '',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbyaZdXpyp2MPPr-9iKyic3UELJOMJ_TEU1cXmOVLgOCWWi87_-qXXQWT4NyWPeXiqZC/exec',
   },
 ];
 
@@ -93,6 +93,9 @@ export function getInitialFinishing(): FinishingDetails {
     trimming: { today: '', cumulative: '', balance: '', totalUsedManpower: '', costPerPiece: '' },
     checking: { today: '', cumulative: '', balance: '', totalUsedManpower: '', costPerPiece: '' },
     aqlAudit: { today: '', cumulative: '', balance: '', todayResubmission: '', cumulativeResubmission: '', pctResubmission: '' },
+    trimmingHistory: [],
+    checkingHistory: [],
+    aqlHistory: [],
   };
 }
 
@@ -221,8 +224,20 @@ function doPost(e) {
     var rawData = e.postData.contents;
     var data = JSON.parse(rawData);
     
-    // Select the active sheet
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Select the active sheet (container-bound or standalone openById fallback)
+    var ss = null;
+    try {
+      ss = SpreadsheetApp.getActiveSpreadsheet();
+    } catch (e) {}
+    if (!ss && data.spreadsheetId) {
+      try {
+        ss = SpreadsheetApp.openById(data.spreadsheetId);
+      } catch (err) {}
+    }
+    if (!ss) {
+      throw new Error("Could not bind to Google Spreadsheet. Check permissions or make sure spreadsheet ID is accessible.");
+    }
+    
     var sheetName = data.branch || "Daily Data";
     var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
     
@@ -245,6 +260,12 @@ function doPost(e) {
       ];
       sheet.appendRow(headers);
       sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#F3F4F6");
+    }
+    
+    // Ensure the sheet has at least 74 columns so range queries do not fail
+    var maxCols = sheet.getMaxColumns();
+    if (maxCols < 74) {
+      sheet.insertColumnsAfter(maxCols, 74 - maxCols);
     }
     
     // Map JSON parameters to sheet row array
@@ -397,22 +418,50 @@ function doPost(e) {
       data.id || ""
     ];
     
-    // Check if row with this Report ID already exists
+    // Dynamically search for the Report ID column index to support shifting columns or custom sheet edits
     var lastRow = sheet.getLastRow();
+    var lastColumn = sheet.getLastColumn();
+    var reportIdColIndex = 74; // Fallback to column 74 (BV) by default
+    
+    if (lastColumn >= 1) {
+      try {
+        var firstRowValues = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+        for (var c = 0; c < firstRowValues.length; c++) {
+          var headerName = String(firstRowValues[c]).replace(/[\s\-_]/g, "").toLowerCase();
+          if (headerName === "reportid") {
+            reportIdColIndex = c + 1;
+            break;
+          }
+        }
+      } catch (headerErr) {
+        // Fallback to default index
+      }
+    }
+    
     var existingRowIndex = -1;
     
     if (lastRow > 1 && data.id) {
-      var idValues = sheet.getRange(2, 74, lastRow - 1, 1).getValues();
-      for (var i = 0; i < idValues.length; i++) {
-        if (idValues[i][0] === data.id) {
-          existingRowIndex = i + 2; // 2 offset (1-based index + header skew)
-          break;
+      try {
+        var idValues = sheet.getRange(2, reportIdColIndex, lastRow - 1, 1).getValues();
+        var targetId = String(data.id).trim();
+        for (var i = 0; i < idValues.length; i++) {
+          var cellVal = String(idValues[i][0]).trim();
+          if (cellVal === targetId) {
+            existingRowIndex = i + 2; // 2 offset (1-based index + header skew)
+            break;
+          }
         }
+      } catch (rangeErr) {
+        // Fallback or ignore range error
       }
     }
     
     if (existingRowIndex !== -1) {
-      // Overwrite the existing row values with updated step progress
+      // Overwrite the existing row values with updated step progress (safely keeping it on the same single row!)
+      var colsNeeded = Math.max(rowValues.length, reportIdColIndex);
+      if (sheet.getMaxColumns() < colsNeeded) {
+        sheet.insertColumnsAfter(sheet.getMaxColumns(), colsNeeded - sheet.getMaxColumns());
+      }
       sheet.getRange(existingRowIndex, 1, 1, rowValues.length).setValues([rowValues]);
     } else {
       // Append brand-new row for new production report

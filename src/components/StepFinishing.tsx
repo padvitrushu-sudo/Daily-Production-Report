@@ -31,6 +31,20 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
 
   const targetSewingOutCum = sewingOutputCumulative !== '' && !isNaN(Number(sewingOutputCumulative)) ? Number(sewingOutputCumulative) : 0;
 
+  // Retrieve fallback lists for safety
+  const trimmingHistory = data.trimmingHistory || [];
+  const checkingHistory = data.checkingHistory || [];
+  const aqlHistory = data.aqlHistory || [];
+
+  // Derived sums from histories:
+  const derivedTrimmingManpower = trimmingHistory.reduce((sum, h) => sum + h.qty, 0);
+  const derivedTrimmingCost = derivedTrimmingManpower; // Sum of AW
+
+  const derivedCheckingManpower = checkingHistory.reduce((sum, h) => sum + h.qty, 0);
+  const derivedCheckingCost = derivedCheckingManpower * 700; // BC * 700
+
+  const derivedAqlResubmission = aqlHistory.reduce((sum, h) => sum + h.qty, 0);
+
   const handleTabChange = (tab: 'Trimming' | 'Checking' | 'AQL Audit') => {
     setActiveTab(tab);
     onUpdate({
@@ -73,51 +87,31 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
   React.useEffect(() => {
     // 1) Trimming (AT-AX)
     const expectedTrimmingCum = data.trimming.today !== '' ? Number(data.trimming.today) : '';
+    const expectedTrimmingBal = data.trimming.today !== '' ? targetSewingOutCum - Number(expectedTrimmingCum) : '';
     
-    // Balance(AV) = Sewing Output Cumulative AQ - Trimming today AT
-    const todayTrim = data.trimming.today !== '' ? Number(data.trimming.today) : 0;
-    const expectedTrimmingBal = data.trimming.today !== '' ? targetSewingOutCum - todayTrim : '';
-    
-    // Cost Per Piece(AX) = totalUsedManpower / today
-    const calculatedTrimCost = expectedTrimmingCum !== '' && expectedTrimmingCum > 0 && data.trimming.totalUsedManpower !== ''
-      ? parseFloat((Number(data.trimming.totalUsedManpower) / Number(expectedTrimmingCum)).toFixed(2))
-      : '';
-
     // 2) Checking (AY-BD)
     const expectedCheckingCum = data.checking.today !== '' ? Number(data.checking.today) : '';
-    
-    // Balance(BA) = Trimming steps Cumulative AU - Checking steps Cumulative AZ
-    const actualCheckingAZ = expectedCheckingCum !== '' ? Number(expectedCheckingCum) : 0;
-    const actualTrimmingAU = expectedTrimmingCum !== '' ? Number(expectedTrimmingCum) : 0;
-    const expectedCheckingBal = data.checking.today !== '' ? actualTrimmingAU - actualCheckingAZ : '';
-    
-    // Cost Per Piece - BD = Total Cumulative Checking Manpower Column BC * 700
-    const expectedCheckingCost = data.checking.totalUsedManpower !== ''
-      ? Number(data.checking.totalUsedManpower) * 700
-      : '';
+    const expectedCheckingBal = data.checking.today !== '' ? (expectedTrimmingCum !== '' ? Number(expectedTrimmingCum) : 0) - Number(expectedCheckingCum) : '';
+    const expectedCheckingCost = derivedCheckingManpower * 700;
 
     // 3) AQL Audit (BE-BJ)
     const expectedAqlCum = data.aqlAudit.today !== '' ? Number(data.aqlAudit.today) : '';
-    
-    // Balance(BG) = Checking steps Total Cumulative Manpower BC Column - AQL Audit BE today Column
-    const actualCheckingBC = data.checking.totalUsedManpower !== '' ? Number(data.checking.totalUsedManpower) : 0;
-    const actualAqlBE = expectedAqlCum !== '' ? Number(expectedAqlCum) : 0;
-    const expectedAqlBal = data.aqlAudit.today !== '' ? actualCheckingBC - actualAqlBE : '';
-    
-    // % Re-submission(BJ) = (Cumulative Resubmission BI / Cumulative BF) * 100
-    const actualBI = data.aqlAudit.cumulativeResubmission !== '' ? Number(data.aqlAudit.cumulativeResubmission) : 0;
-    const actualBF = expectedAqlCum !== '' ? Number(expectedAqlCum) : 0;
-    const expectedAqlPct = actualBF > 0 ? parseFloat(((actualBI / actualBF) * 100).toFixed(2)) : 0;
+    const expectedAqlBal = data.aqlAudit.today !== '' ? derivedCheckingManpower - Number(expectedAqlCum) : '';
+    const aqlCumNum = expectedAqlCum !== '' ? Number(expectedAqlCum) : 0;
+    const expectedAqlPct = aqlCumNum > 0 ? parseFloat(((derivedAqlResubmission / aqlCumNum) * 100).toFixed(2)) : 0;
 
     if (
       data.trimming.cumulative !== expectedTrimmingCum ||
       data.trimming.balance !== expectedTrimmingBal ||
-      data.trimming.costPerPiece !== calculatedTrimCost ||
+      data.trimming.totalUsedManpower !== derivedTrimmingManpower ||
+      data.trimming.costPerPiece !== derivedTrimmingCost ||
       data.checking.cumulative !== expectedCheckingCum ||
       data.checking.balance !== expectedCheckingBal ||
+      data.checking.totalUsedManpower !== derivedCheckingManpower ||
       data.checking.costPerPiece !== expectedCheckingCost ||
       data.aqlAudit.cumulative !== expectedAqlCum ||
       data.aqlAudit.balance !== expectedAqlBal ||
+      data.aqlAudit.cumulativeResubmission !== derivedAqlResubmission ||
       data.aqlAudit.pctResubmission !== expectedAqlPct
     ) {
       onUpdate({
@@ -126,54 +120,155 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
           ...data.trimming,
           cumulative: expectedTrimmingCum,
           balance: expectedTrimmingBal,
-          costPerPiece: calculatedTrimCost,
+          totalUsedManpower: derivedTrimmingManpower,
+          costPerPiece: derivedTrimmingCost,
         },
         checking: {
           ...data.checking,
           cumulative: expectedCheckingCum,
           balance: expectedCheckingBal,
+          totalUsedManpower: derivedCheckingManpower,
           costPerPiece: expectedCheckingCost,
         },
         aqlAudit: {
           ...data.aqlAudit,
           cumulative: expectedAqlCum,
           balance: expectedAqlBal,
+          cumulativeResubmission: derivedAqlResubmission,
           pctResubmission: expectedAqlPct,
         }
       });
     }
   }, [
     data.trimming.today,
-    data.trimming.totalUsedManpower,
     data.checking.today,
-    data.checking.totalUsedManpower,
     data.aqlAudit.today,
-    data.aqlAudit.cumulativeResubmission,
+    derivedTrimmingManpower,
+    derivedTrimmingCost,
+    derivedCheckingManpower,
+    derivedCheckingCost,
+    derivedAqlResubmission,
     targetSewingOutCum
   ]);
 
   // Trimming Manpower Add Button Action
   const handleAddTrimmingManpower = () => {
     if (trimmingManInput === '' || isNaN(Number(trimmingManInput))) return;
-    const current = data.trimming.totalUsedManpower !== '' ? Number(data.trimming.totalUsedManpower) : 0;
-    handleTrimmingChange('totalUsedManpower', current + Number(trimmingManInput));
+    const newEntry = {
+      id: `trim_man_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      qty: Number(trimmingManInput),
+      createdAt: Date.now()
+    };
+    const updatedHistory = [...trimmingHistory, newEntry];
+    const newSum = updatedHistory.reduce((sum, h) => sum + h.qty, 0);
+
+    onUpdate({
+      ...data,
+      trimmingHistory: updatedHistory,
+      trimming: {
+        ...data.trimming,
+        totalUsedManpower: newSum,
+        costPerPiece: newSum
+      }
+    });
     setTrimmingManInput('');
+  };
+
+  const handleDeleteTrimmingManpower = (id: string) => {
+    const updatedHistory = trimmingHistory.filter(h => h.id !== id);
+    const newSum = updatedHistory.length > 0 ? updatedHistory.reduce((sum, h) => sum + h.qty, 0) : '';
+
+    onUpdate({
+      ...data,
+      trimmingHistory: updatedHistory,
+      trimming: {
+        ...data.trimming,
+        totalUsedManpower: newSum,
+        costPerPiece: newSum
+      }
+    });
   };
 
   // Checking Manpower Add Button Action
   const handleAddCheckingManpower = () => {
     if (checkingManInput === '' || isNaN(Number(checkingManInput))) return;
-    const current = data.checking.totalUsedManpower !== '' ? Number(data.checking.totalUsedManpower) : 0;
-    handleCheckingChange('totalUsedManpower', current + Number(checkingManInput));
+    const newEntry = {
+      id: `check_man_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      qty: Number(checkingManInput),
+      createdAt: Date.now()
+    };
+    const updatedHistory = [...checkingHistory, newEntry];
+    const newSum = updatedHistory.reduce((sum, h) => sum + h.qty, 0);
+
+    onUpdate({
+      ...data,
+      checkingHistory: updatedHistory,
+      checking: {
+        ...data.checking,
+        totalUsedManpower: newSum,
+        costPerPiece: newSum * 700
+      }
+    });
     setCheckingManInput('');
+  };
+
+  const handleDeleteCheckingManpower = (id: string) => {
+    const updatedHistory = checkingHistory.filter(h => h.id !== id);
+    const newSum = updatedHistory.length > 0 ? updatedHistory.reduce((sum, h) => sum + h.qty, 0) : '';
+
+    onUpdate({
+      ...data,
+      checkingHistory: updatedHistory,
+      checking: {
+        ...data.checking,
+        totalUsedManpower: newSum,
+        costPerPiece: newSum !== '' ? newSum * 700 : ''
+      }
+    });
   };
 
   // AQL Resubmission Add Button Action
   const handleAddAqlResub = () => {
     if (aqlResubInput === '' || isNaN(Number(aqlResubInput))) return;
-    const current = data.aqlAudit.cumulativeResubmission !== '' ? Number(data.aqlAudit.cumulativeResubmission) : 0;
-    handleAqlChange('cumulativeResubmission', current + Number(aqlResubInput));
+    const newEntry = {
+      id: `aql_resub_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      qty: Number(aqlResubInput),
+      createdAt: Date.now()
+    };
+    const updatedHistory = [...aqlHistory, newEntry];
+    const newSum = updatedHistory.reduce((sum, h) => sum + h.qty, 0);
+
+    const expectedAqlCum = data.aqlAudit.today !== '' ? Number(data.aqlAudit.today) : 0;
+    const expectedAqlPct = expectedAqlCum > 0 ? parseFloat(((newSum / expectedAqlCum) * 100).toFixed(2)) : 0;
+
+    onUpdate({
+      ...data,
+      aqlHistory: updatedHistory,
+      aqlAudit: {
+        ...data.aqlAudit,
+        cumulativeResubmission: newSum,
+        pctResubmission: expectedAqlPct
+      }
+    });
     setAqlResubInput('');
+  };
+
+  const handleDeleteAqlResub = (id: string) => {
+    const updatedHistory = aqlHistory.filter(h => h.id !== id);
+    const newSum = updatedHistory.length > 0 ? updatedHistory.reduce((sum, h) => sum + h.qty, 0) : '';
+
+    const expectedAqlCum = data.aqlAudit.today !== '' ? Number(data.aqlAudit.today) : 0;
+    const expectedAqlPct = expectedAqlCum > 0 && newSum !== '' ? parseFloat(((Number(newSum) / expectedAqlCum) * 100).toFixed(2)) : 0;
+
+    onUpdate({
+      ...data,
+      aqlHistory: updatedHistory,
+      aqlAudit: {
+        ...data.aqlAudit,
+        cumulativeResubmission: newSum,
+        pctResubmission: expectedAqlPct
+      }
+    });
   };
 
   const isFormValid = true;
@@ -226,7 +321,7 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
               <span className="text-[10px] text-emerald-700 bg-white border px-2.5 py-0.5 rounded uppercase font-bold">Automatic Sync</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
               
               {/* Today */}
               <div className="flex flex-col gap-1">
@@ -291,7 +386,17 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleTrimmingChange('totalUsedManpower', '')}
+                    onClick={() => {
+                      onUpdate({
+                        ...data,
+                        trimmingHistory: [],
+                        trimming: {
+                          ...data.trimming,
+                          totalUsedManpower: '',
+                          costPerPiece: ''
+                        }
+                      });
+                    }}
                     className="p-2 border border-gray-250 hover:bg-red-50 text-red-500 rounded-lg"
                     title="Reset Manual Cumulative Manpower"
                   >
@@ -316,7 +421,7 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-600">Cost Per Piece (AX)</label>
-                  <span className="text-[9px] bg-emerald-50 text-emerald-800 px-1 py-0.5 rounded font-mono font-bold">AW / AT</span>
+                  <span className="text-[9px] bg-emerald-50 text-emerald-800 px-1 py-0.5 rounded font-mono font-bold">Sum of AW</span>
                 </div>
                 <input
                   type="number"
@@ -328,6 +433,44 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
               </div>
 
             </div>
+
+            {/* Trimming History logs */}
+            {trimmingHistory.length > 0 && (
+              <div className="mt-5 border border-gray-150 rounded-xl overflow-hidden shadow-xs">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-gray-150 flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-700">Trimming Manpower Log History (AW)</span>
+                  <span className="text-xs text-emerald-600 font-mono font-semibold">Total: {derivedTrimmingManpower}</span>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/50 text-[10px] text-gray-400 font-bold uppercase border-b border-gray-150">
+                        <th className="p-3">Entry No.</th>
+                        <th className="p-3 text-right">Manpower Value</th>
+                        <th className="p-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 font-medium font-mono">
+                      {trimmingHistory.map((h, index) => (
+                        <tr key={h.id} className="hover:bg-slate-50/30">
+                          <td className="p-3 text-gray-500 font-sans">Entry #{index + 1}</td>
+                          <td className="p-3 text-right font-bold text-gray-800">{h.qty.toLocaleString()}</td>
+                          <td className="p-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTrimmingManpower(h.id)}
+                              className="text-red-500 hover:text-red-700 font-sans text-[11px] font-bold"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -404,7 +547,17 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleCheckingChange('totalUsedManpower', '')}
+                    onClick={() => {
+                      onUpdate({
+                        ...data,
+                        checkingHistory: [],
+                        checking: {
+                          ...data.checking,
+                          totalUsedManpower: '',
+                          costPerPiece: ''
+                        }
+                      });
+                    }}
                     className="p-2 border border-gray-250 hover:bg-red-50 text-red-500 rounded-lg"
                     title="Reset Checking Manpower Cumulative"
                   >
@@ -441,6 +594,44 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
               </div>
 
             </div>
+
+            {/* Checking History Logs */}
+            {checkingHistory.length > 0 && (
+              <div className="mt-5 border border-gray-150 rounded-xl overflow-hidden shadow-xs">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-gray-150 flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-700">Checking Manpower Log History (BC)</span>
+                  <span className="text-xs text-sky-600 font-mono font-semibold">Total: {derivedCheckingManpower}</span>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/50 text-[10px] text-gray-400 font-bold uppercase border-b border-gray-150">
+                        <th className="p-3">Entry No.</th>
+                        <th className="p-3 text-right">Manpower Value</th>
+                        <th className="p-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 font-medium font-mono">
+                      {checkingHistory.map((h, index) => (
+                        <tr key={h.id} className="hover:bg-slate-50/30">
+                          <td className="p-3 text-gray-500 font-sans">Entry #{index + 1}</td>
+                          <td className="p-3 text-right font-bold text-gray-800">{h.qty.toLocaleString()}</td>
+                          <td className="p-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCheckingManpower(h.id)}
+                              className="text-red-500 hover:text-red-700 font-sans text-[11px] font-bold"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -517,7 +708,17 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleAqlChange('cumulativeResubmission', '')}
+                    onClick={() => {
+                      onUpdate({
+                        ...data,
+                        aqlHistory: [],
+                        aqlAudit: {
+                          ...data.aqlAudit,
+                          cumulativeResubmission: '',
+                          pctResubmission: ''
+                        }
+                      });
+                    }}
                     className="p-2 border border-gray-250 hover:bg-red-50 text-red-500 rounded-lg"
                     title="Reset Cumulative Resubmissions"
                   >
@@ -553,6 +754,44 @@ export const StepFinishing: React.FC<StepFinishingProps> = ({
               </div>
 
             </div>
+
+            {/* AQL History logs */}
+            {aqlHistory.length > 0 && (
+              <div className="mt-5 border border-gray-150 rounded-xl overflow-hidden shadow-xs">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-gray-150 flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-700">AQL Re-submission Log History (BI)</span>
+                  <span className="text-xs text-teal-600 font-mono font-semibold">Total: {derivedAqlResubmission} pcs</span>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/50 text-[10px] text-gray-400 font-bold uppercase border-b border-gray-150">
+                        <th className="p-3">Entry No.</th>
+                        <th className="p-3 text-right">Quantity</th>
+                        <th className="p-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 font-medium font-mono">
+                      {aqlHistory.map((h, index) => (
+                        <tr key={h.id} className="hover:bg-slate-50/30">
+                          <td className="p-3 text-gray-500 font-sans">Entry #{index + 1}</td>
+                          <td className="p-3 text-right font-bold text-gray-800">{h.qty.toLocaleString()}</td>
+                          <td className="p-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAqlResub(h.id)}
+                              className="text-red-500 hover:text-red-700 font-sans text-[11px] font-bold"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

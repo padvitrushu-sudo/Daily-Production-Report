@@ -46,7 +46,6 @@ export const StepSummarySubmit: React.FC<StepSummarySubmitProps> = ({
   const fabric = report.fabric;
   const cutting = report.cutting;
   const sewing = report.sewing;
-  const trimming = report.trimming;
   const finishing = report.finishing;
   const ironing = report.ironingPacking;
   const ctn = report.ctnPacking;
@@ -211,49 +210,36 @@ export const StepSummarySubmit: React.FC<StepSummarySubmitProps> = ({
               </div>
             </div>
 
-            {/* Box 5: Trimming & Finishing */}
+            {/* Box 5: Finishing Assembly & Quality (AQL) */}
             <div className="p-4 rounded-xl border border-gray-100 bg-slate-50/30 space-y-2.5 md:col-span-2">
-              <h3 className="font-bold text-gray-900 border-b pb-1">5. Trimming, Finishing Assembly & Quality (AQL)</h3>
+              <h3 className="font-bold text-gray-900 border-b pb-1">5. Finishing Gate & Quality (AQL)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 
-                {/* Trimming Sub Column */}
+                {/* Finishing Trimming Sub Column */}
                 <div className="space-y-1 bg-white p-2 rounded border border-gray-100">
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase">Trimming Line Output</span>
-                  <div className="flex justify-between"><span>Today:</span> <strong className="font-mono">{trimming.today || 0}</strong></div>
-                  <div className="flex justify-between"><span>Manpower:</span> <strong className="font-mono">{trimming.totalUsedManpower || 0}</strong></div>
-                  <div className="flex justify-between"><span>Rate/Piece:</span> <strong className="font-mono text-emerald-700 font-bold">₹{calculateCostPerPiece(trimming.totalUsedManpower, trimming.today) || '0'}</strong></div>
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase">Trimming (Finishing)</span>
+                  <div className="flex justify-between text-xs"><span>Today:</span> <strong className="font-mono">{finishing.trimming.today || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Cumulative:</span> <strong className="font-mono">{finishing.trimming.cumulative || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Manpower:</span> <strong className="font-mono">{finishing.trimming.totalUsedManpower || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Cost:</span> <strong className="font-mono text-emerald-700 font-bold">₹{finishing.trimming.costPerPiece || '0'}</strong></div>
                 </div>
 
-                {/* Finishing Sub Column */}
+                {/* Finishing Checking Sub Column */}
                 <div className="space-y-1 bg-white p-2 rounded border border-gray-100">
-                  <span className="text-[10px] font-bold text-sky-700 uppercase">Finishing Active tab: {finishing.subType}</span>
-                  {finishing.subType === 'AQL Audit' ? (
-                    <div className="text-[10px] font-mono leading-relaxed text-slate-650">
-                      <div>Audited: <strong>{finishing.aqlAudit.today || 0}</strong></div>
-                      <div>Defected Submissions: <strong>{finishing.aqlAudit.cumulativeResubmission || 0}</strong></div>
-                      <div>Recheck ratio %: <strong className="text-red-600">{calculatedAqlPct}%</strong></div>
-                    </div>
-                  ) : finishing.subType === 'Checking' ? (
-                    <div className="text-[10px] font-mono leading-normal text-slate-650 text-xs">
-                      <div>Checked today: <strong>{finishing.checking.today || 0}</strong></div>
-                      <div>Cumulative: <strong>{finishing.checking.cumulative || 0}</strong></div>
-                      <div>Manpower: <strong>{finishing.checking.totalUsedManpower || 0}</strong></div>
-                    </div>
-                  ) : (
-                    <div className="text-[10px] font-mono leading-normal text-slate-650 text-xs">
-                      <div>Trimmed today: <strong>{finishing.trimming.today || 0}</strong></div>
-                      <div>Cumulative: <strong>{finishing.trimming.cumulative || 0}</strong></div>
-                      <div>Manpower: <strong>{finishing.trimming.totalUsedManpower || 0}</strong></div>
-                    </div>
-                  )}
+                  <span className="text-[10px] font-bold text-sky-700 uppercase">Checking (Finishing)</span>
+                  <div className="flex justify-between text-xs"><span>Checked today:</span> <strong className="font-mono">{finishing.checking.today || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Cumulative:</span> <strong className="font-mono">{finishing.checking.cumulative || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Manpower:</span> <strong className="font-mono">{finishing.checking.totalUsedManpower || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Cost:</span> <strong className="font-mono text-sky-700 font-bold">₹{finishing.checking.costPerPiece || '0'}</strong></div>
                 </div>
 
-                {/* Ironing & Packing Sub Column */}
+                {/* Finishing AQL Audit Sub Column */}
                 <div className="space-y-1 bg-white p-2 rounded border border-gray-100">
-                  <span className="text-[10px] font-bold text-teal-800 uppercase">Ironing & Packing stage</span>
-                  <div className="flex justify-between"><span>Today:</span> <strong className="font-mono">{ironing.today || 0}</strong></div>
-                  <div className="flex justify-between"><span>Manpower:</span> <strong className="font-mono">{ironing.totalUsedManpower || 0}</strong></div>
-                  <div className="flex justify-between"><span>Rate/Piece:</span> <strong className="font-mono text-emerald-700 font-bold">₹{calculatedCost || '0'}</strong></div>
+                  <span className="text-[10px] font-bold text-teal-800 uppercase">AQL Audit (Finishing)</span>
+                  <div className="flex justify-between text-xs"><span>Audited:</span> <strong className="font-mono">{finishing.aqlAudit.today || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Cumulative:</span> <strong className="font-mono">{finishing.aqlAudit.cumulative || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Resubmissions:</span> <strong className="font-mono">{finishing.aqlAudit.cumulativeResubmission || 0}</strong></div>
+                  <div className="flex justify-between text-xs"><span>Recheck Ratio %:</span> <strong className="text-red-600 font-mono font-bold">{finishing.aqlAudit.pctResubmission || 0}%</strong></div>
                 </div>
 
               </div>

@@ -61,7 +61,6 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
       const f = rec.fabric;
       const c = rec.cutting;
       const s = rec.sewing;
-      const t = rec.trimming;
       const fin = rec.finishing;
       const i = rec.ironingPacking;
       const ctn = rec.ctnPacking;
@@ -85,6 +84,7 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
       const cutCum = calculateCuttingCumulative(c.qtyToday, c.qtyUptoYesterday) || 0;
       const cutBal = c.planCutQtyPct ? (Number(c.planCutQtyPct) - cutCum) : 0;
 
+      const trim = fin.trimming || { today: '', cumulative: '', balance: '', totalUsedManpower: '', costPerPiece: '' };
       const chk = fin.checking || { today: '', cumulative: '', balance: '', totalUsedManpower: '', costPerPiece: '' };
       const aql = fin.aqlAudit || { today: '', cumulative: '', balance: '', todayResubmission: '', cumulativeResubmission: '', pctResubmission: '' };
       
@@ -148,11 +148,11 @@ export const RecordsTable: React.FC<RecordsTableProps> = ({
         `"${s.output ? s.output.remark : ''}"`,
         
         // Trimming (Col AT-AX: 46-50)
-        t.today || 0,
-        t.cumulative || 0,
-        t.balance || 0,
-        t.totalUsedManpower || 0,
-        (t.totalUsedManpower && t.today) ? (Number(t.totalUsedManpower) / Number(t.today)).toFixed(2) : 0,
+        trim.today || 0,
+        trim.cumulative || 0,
+        trim.balance || 0,
+        trim.totalUsedManpower || 0,
+        trim.costPerPiece || 0,
         
         // Checking (Col AY-BD: 51-56)
         chk.today || 0,

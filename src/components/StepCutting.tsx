@@ -33,6 +33,37 @@ export const StepCutting: React.FC<StepCuttingProps> = ({
   const history = data.history || [];
   const todayStr = getTodayDateString();
 
+  // Helper to extract chronological order of logs
+  const getLogTimestamp = (log: any) => {
+    if (log.createdAt) return log.createdAt;
+    const parts = log.id.split('_');
+    if (parts.length > 1 && !isNaN(Number(parts[1]))) {
+      return Number(parts[1]);
+    }
+    return 0; // Default fallback
+  };
+
+  // Sort chronologically ascending to find latest and prior logs
+  const chronological = [...history].sort((a, b) => getLogTimestamp(a) - getLogTimestamp(b));
+  
+  // Latest log quantity goes to today qty (AH)
+  const latestLog = chronological.length > 0 ? chronological[chronological.length - 1] : null;
+  const derivedQtyToday = latestLog ? latestLog.qty : 0;
+
+  // Prior logs sum goes to upto yesterday qty (AI)
+  const priorLogs = chronological.length > 1 ? chronological.slice(0, chronological.length - 1) : [];
+  const derivedQtyUptoYesterday = priorLogs.reduce((sum, h) => sum + h.qty, 0);
+
+  // Grand Total Cumulative (AJ)
+  const derivedCumulative = derivedQtyToday + derivedQtyUptoYesterday;
+
+  // Derive Balance to Cut (AK) = (Pland Mfrng Qty - Grand Total Cumulative AJ)
+  const targetPlanQty = data.planCutQtyPct !== '' ? Number(data.planCutQtyPct) : (plannedMfrgQty !== '' ? Number(plannedMfrgQty) : 0);
+  const derivedBalance = targetPlanQty - derivedCumulative;
+
+  // Sort descending for display (newest first in table)
+  const displayedHistory = [...history].sort((a, b) => getLogTimestamp(b) - getLogTimestamp(a));
+
   // Sync planCutQtyPct with plannedMfrgQty if empty
   useEffect(() => {
     if (plannedMfrgQty !== '' && (!data.planCutQtyPct || data.planCutQtyPct === '')) {
@@ -42,23 +73,6 @@ export const StepCutting: React.FC<StepCuttingProps> = ({
       });
     }
   }, [plannedMfrgQty, data.planCutQtyPct]);
-
-  // Derive qtyToday as sum of today's logged entries
-  const derivedQtyToday = history
-    .filter((h) => h.date === todayStr)
-    .reduce((sum, h) => sum + h.qty, 0);
-
-  // Derive qtyUptoYesterday as sum of entries < today
-  const derivedQtyUptoYesterday = history
-    .filter((h) => h.date < todayStr)
-    .reduce((sum, h) => sum + h.qty, 0);
-
-  // Derive Grand Total Cumulative (AJ)
-  const derivedCumulative = derivedQtyToday + derivedQtyUptoYesterday;
-
-  // Derive Balance to Cut (AK) = (Pland Mfrng Qty - Grand Total Cumulative AJ)
-  const targetPlanQty = data.planCutQtyPct !== '' ? Number(data.planCutQtyPct) : (plannedMfrgQty !== '' ? Number(plannedMfrgQty) : 0);
-  const derivedBalance = targetPlanQty - derivedCumulative;
 
   // Sync calculated values back to parent state when history changes
   useEffect(() => {
@@ -81,27 +95,23 @@ export const StepCutting: React.FC<StepCuttingProps> = ({
       id: `cut_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       date: logDate,
       qty: Number(logQty),
+      createdAt: Date.now()
     };
 
     const updatedHistory = [...history, newLog];
     
-    // Sort history by date descending
-    updatedHistory.sort((a, b) => b.date.localeCompare(a.date));
-
-    // Calculate active sums for immediate update
-    const newQtyToday = updatedHistory
-      .filter((h) => h.date === todayStr)
-      .reduce((sum, h) => sum + h.qty, 0);
-
-    const newQtyUptoYesterday = updatedHistory
-      .filter((h) => h.date < todayStr)
-      .reduce((sum, h) => sum + h.qty, 0);
+    // Sort and calculate updated sums chronologically for parent update
+    const updatedChrono = [...updatedHistory].sort((a, b) => getLogTimestamp(a) - getLogTimestamp(b));
+    const upLatest = updatedChrono.length > 0 ? updatedChrono[updatedChrono.length - 1] : null;
+    const nextQtyToday = upLatest ? upLatest.qty : 0;
+    const upPriors = updatedChrono.length > 1 ? updatedChrono.slice(0, updatedChrono.length - 1) : [];
+    const nextQtyUptoYesterday = upPriors.reduce((sum, h) => sum + h.qty, 0);
 
     onUpdate({
       ...data,
       history: updatedHistory,
-      qtyToday: newQtyToday,
-      qtyUptoYesterday: newQtyUptoYesterday,
+      qtyToday: nextQtyToday,
+      qtyUptoYesterday: nextQtyUptoYesterday,
     });
 
     setLogQty(''); // Clear "Qty Today" input on logging as requested!
@@ -110,19 +120,17 @@ export const StepCutting: React.FC<StepCuttingProps> = ({
   const handleDeleteLog = (id: string) => {
     const updatedHistory = history.filter((h) => h.id !== id);
 
-    const newQtyToday = updatedHistory
-      .filter((h) => h.date === todayStr)
-      .reduce((sum, h) => sum + h.qty, 0);
-
-    const newQtyUptoYesterday = updatedHistory
-      .filter((h) => h.date < todayStr)
-      .reduce((sum, h) => sum + h.qty, 0);
+    const updatedChrono = [...updatedHistory].sort((a, b) => getLogTimestamp(a) - getLogTimestamp(b));
+    const upLatest = updatedChrono.length > 0 ? updatedChrono[updatedChrono.length - 1] : null;
+    const nextQtyToday = upLatest ? upLatest.qty : 0;
+    const upPriors = updatedChrono.length > 1 ? updatedChrono.slice(0, updatedChrono.length - 1) : [];
+    const nextQtyUptoYesterday = upPriors.reduce((sum, h) => sum + h.qty, 0);
 
     onUpdate({
       ...data,
       history: updatedHistory,
-      qtyToday: newQtyToday,
-      qtyUptoYesterday: newQtyUptoYesterday,
+      qtyToday: nextQtyToday,
+      qtyUptoYesterday: nextQtyUptoYesterday,
     });
   };
 
@@ -318,21 +326,21 @@ export const StepCutting: React.FC<StepCuttingProps> = ({
                   <th className="p-3 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 font-medium">
-                {history.map((h) => {
-                  const isTodayLog = h.date === todayStr;
+              <tbody className="divide-y divide-gray-100 font-medium font-mono">
+                {displayedHistory.map((h) => {
+                  const isLatest = latestLog && h.id === latestLog.id;
                   return (
                     <tr key={h.id} className="hover:bg-slate-50/50">
-                      <td className="p-3 font-semibold text-gray-750 flex items-center gap-1.5">
+                      <td className="p-3 font-semibold text-gray-750 flex items-center gap-1.5 font-sans">
                         <Calendar className="w-3.5 h-3.5 text-gray-400" />
                         <span>{h.date}</span>
                       </td>
-                      <td className="p-3 font-mono font-bold text-gray-800">{h.qty.toLocaleString()} pcs</td>
-                      <td className="p-3">
-                        {isTodayLog ? (
-                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full uppercase">Today's Cut (AH)</span>
+                      <td className="p-3 font-bold text-gray-850 font-mono">{h.qty.toLocaleString()} pcs</td>
+                      <td className="p-3 font-sans">
+                        {isLatest ? (
+                          <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full uppercase">Current Cut (AH)</span>
                         ) : (
-                          <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full uppercase">Yesterday / Prior (AI)</span>
+                          <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full uppercase">Prior / Logged (AI)</span>
                         )}
                       </td>
                       <td className="p-3 text-center">

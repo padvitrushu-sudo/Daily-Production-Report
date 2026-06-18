@@ -85,7 +85,7 @@ export async function authenticateBranchUser(username: string, password: string)
       admin: { password: 'admin123', branch: 'Admin', label: 'Global Supervisor' },
       hojiwala: { password: 'Password123', branch: 'Hojiwala', label: 'Hojiwala Operator' },
       sachin: { password: 'Password123', branch: 'Sachin', label: 'Sachin Operator' },
-      dondaycha: { password: 'Password123', branch: 'Dondaycha', label: 'Dondaycha Operator' },
+      dondaicha: { password: 'Password123', branch: 'Dondaicha', label: 'Dondaicha Operator' },
       ambernath: { password: 'Password123', branch: 'Ambernath', label: 'Ambernath Operator' },
     };
 
@@ -185,19 +185,21 @@ export async function saveReportToSupabase(report: ProductionReport): Promise<vo
 }
 
 /**
- * Deletes a draft report from Supabase
+ * Deletes a draft report from Supabase (or any report if isAdmin is true)
  */
-export async function deleteReportFromSupabase(id: string): Promise<void> {
+export async function deleteReportFromSupabase(id: string, isAdmin = false): Promise<void> {
   try {
-    // Check if report is submitted and locked
-    const { data: existing } = await supabase
-      .from('production_reports')
-      .select('is_final_submitted')
-      .eq('id', id)
-      .single();
+    if (!isAdmin) {
+      // Check if report is submitted and locked
+      const { data: existing } = await supabase
+        .from('production_reports')
+        .select('is_final_submitted')
+        .eq('id', id)
+        .single();
 
-    if (existing && existing.is_final_submitted) {
-      throw new Error('This report has been finalized and locked and cannot be deleted.');
+      if (existing && existing.is_final_submitted) {
+        throw new Error('This report has been finalized and locked and cannot be deleted.');
+      }
     }
 
     const { error } = await supabase
