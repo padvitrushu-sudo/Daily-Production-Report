@@ -274,8 +274,8 @@ function doPost(e) {
     var fabric = data.fabric || {};
     var cutting = data.cutting || {};
     var sewing = data.sewing || {};
-    var trimming = data.trimming || {};
     var finishing = data.finishing || {};
+    var trimming = (data.finishing && data.finishing.trimming && (data.finishing.trimming.today !== "" || data.finishing.trimming.cumulative !== "")) ? data.finishing.trimming : (data.trimming || {});
     var ironing = data.ironingPacking || {};
     var ctn = data.ctnPacking || {};
     

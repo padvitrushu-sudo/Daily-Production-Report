@@ -205,7 +205,12 @@ export default function App() {
 
   // Save current report details as draft whenever changed locally
   const handleUpdateReport = (updated: ProductionReport) => {
-    setDrafts(prev => prev.map(d => d.id === updated.id ? updated : d));
+    // Ensure both report.trimming and report.finishing.trimming are always perfectly in sync
+    const finalUpdated = {
+      ...updated,
+      trimming: updated.finishing ? { ...updated.finishing.trimming } : updated.trimming
+    };
+    setDrafts(prev => prev.map(d => d.id === finalUpdated.id ? finalUpdated : d));
   };
 
   const handleBranchChange = (branch: Branch) => {
@@ -285,7 +290,8 @@ export default function App() {
     
     const updated = {
       ...report,
-      activeStep: nextIndex
+      activeStep: nextIndex,
+      trimming: report.finishing ? { ...report.finishing.trimming } : report.trimming,
     };
     
     // Locally update state right away
@@ -339,6 +345,7 @@ export default function App() {
       timestamp: new Date().toISOString(),
       status: 'Submitted',
       isFinalSubmitted: true,
+      trimming: finalReport.finishing ? { ...finalReport.finishing.trimming } : finalReport.trimming,
     };
 
     setSyncStatus('saving');
