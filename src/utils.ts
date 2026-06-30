@@ -10,7 +10,7 @@ export const DEFAULT_BRANCHES: { id: Branch; name: string; spreadsheetId: string
     id: 'Dondaicha',
     name: 'Dondaicha Branch',
     spreadsheetId: '1IIOBRwrV-7YBTI7pY8O06PevDYnRX6H0_OiLEurHsqU',
-    webAppUrl: '',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbymtLD5w1L71sEJBHToOqrsxuh-GIvcbRZWeFlBlZcnkhvN08IFiWc7ISbcQeI8QXzY/exec',
   },
   {
     id: 'Hojiwala',

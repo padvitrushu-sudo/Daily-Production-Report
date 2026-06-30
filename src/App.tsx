@@ -305,13 +305,14 @@ export default function App() {
       
       // 2. Synchronize to Google Sheets
       const config = configs.find(c => c.id === currentBranch);
-      if (config?.webAppUrl) {
+      const webAppUrl = config?.webAppUrl || configs.find(c => !!c.webAppUrl)?.webAppUrl;
+      if (webAppUrl && config) {
         try {
           const payload = {
             ...updated,
             spreadsheetId: config.spreadsheetId,
           };
-          await fetch(config.webAppUrl, {
+          await fetch(webAppUrl, {
             method: 'POST',
             mode: 'no-cors', // Use no-cors to bypass CORS and redirect blockages in browser
             headers: {
@@ -358,14 +359,15 @@ export default function App() {
       setSyncStatus('failed');
     }
 
-    // Attempt pushing to Google Sheets Web App if defined
-    if (config?.webAppUrl) {
+    // Attempt pushing to Google Sheets Web App with dynamic fallback if empty
+    const webAppUrl = config?.webAppUrl || configs.find(c => !!c.webAppUrl)?.webAppUrl;
+    if (webAppUrl && config) {
       try {
         const payload = {
           ...submittedReport,
           spreadsheetId: config.spreadsheetId,
         };
-        await fetch(config.webAppUrl, {
+        await fetch(webAppUrl, {
           method: 'POST',
           mode: 'no-cors', // Use no-cors to bypass CORS and redirect blockages in browser
           headers: {
@@ -833,7 +835,10 @@ export default function App() {
               {activeStep === 8 && (
                 <StepSummarySubmit
                   report={report}
-                  branchConfig={selectedConfig}
+                  branchConfig={selectedConfig ? {
+                    ...selectedConfig,
+                    webAppUrl: selectedConfig.webAppUrl || configs.find(c => !!c.webAppUrl)?.webAppUrl || ''
+                  } : undefined}
                   onPrev={() => handleStepSaveAndNext(7)}
                   onSubmit={handleFinalSubmit}
                 />
